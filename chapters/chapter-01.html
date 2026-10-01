@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 1 — What Is a Database? | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link active" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 1 of 17</span>
+    </div>
+  </nav>
+  <main class="main">
+    <div class="chapter-content">
+      <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 1</div>
+      <h1 class="chapter-title">What Is a Database?</h1>
+      <p class="chapter-lead">Before writing a single line of SQL or Python, you need to understand what a database actually is — and why files alone aren't enough.</p>
+      
+<div class="objectives">
+  <div class="objectives-title">🎯 What you'll learn</div>
+  <ul>
+    <li>What a database is and why programs need one</li>
+    <li>How a database differs from a plain text file or CSV</li>
+    <li>What a relational database is</li>
+    <li>What SQL is and where it fits in</li>
+    <li>The difference between SQLite and PostgreSQL</li>
+  </ul>
+</div>
+
+<h2>1.1 Why Not Just Use a File?</h2>
+<p>Imagine you're building a contact book. The simplest approach is a text file:</p>
+<pre>Samuel, samuel@email.com, 0244123456
+Kwame, kwame@email.com, 0201987654
+Abena, abena@email.com, 0557654321</pre>
+<p>This works fine for a handful of contacts. But what happens when you want to:</p>
+<ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:5px;margin-bottom:18px;font-family:var(--font-sans);font-size:15px;">
+  <li style="padding-left:16px;color:var(--text-muted);">· Find everyone whose name starts with "A"?</li>
+  <li style="padding-left:16px;color:var(--text-muted);">· Update just one person's phone number?</li>
+  <li style="padding-left:16px;color:var(--text-muted);">· Store 50,000 contacts and find one instantly?</li>
+  <li style="padding-left:16px;color:var(--text-muted);">· Have two programs reading and writing at the same time?</li>
+  <li style="padding-left:16px;color:var(--text-muted);">· Make sure a half-written save doesn't corrupt everything?</li>
+</ul>
+<p>A plain file forces you to write all of that logic yourself. A database handles it for you — and handles it fast, safely, and correctly.</p>
+
+<div class="callout concept">
+  <div class="callout-title">🔵 What a database actually is</div>
+  <div class="callout-body">
+    <p>A database is a program that stores data in a structured way and lets you query, update, and manage it efficiently. It handles things like searching, indexing, concurrent access, and preventing corruption — so you don't have to.</p>
+  </div>
+</div>
+
+<h2>1.2 Relational Databases</h2>
+<p>There are many kinds of databases. This book covers <strong>relational databases</strong> — the most common kind, and the one you'll encounter in almost every real application.</p>
+<p>A relational database stores data in <strong>tables</strong> — like spreadsheets, but much more powerful. Each table has rows and columns, and tables can be linked to each other.</p>
+
+<div class="diagram">contacts table
+┌────┬──────────┬───────────────────┬─────────────┐
+│ id │ name     │ email             │ phone       │
+├────┼──────────┼───────────────────┼─────────────┤
+│  1 │ Samuel   │ samuel@email.com  │ 0244123456  │
+│  2 │ Kwame    │ kwame@email.com   │ 0201987654  │
+│  3 │ Abena    │ abena@email.com   │ 0557654321  │
+└────┴──────────┴───────────────────┴─────────────┘</div>
+
+<p>That looks like a spreadsheet — and that's intentional. The concept is familiar. The difference is what you can <em>do</em> with it: filter rows instantly, join multiple tables, update millions of records in one command, and much more.</p>
+
+<h2>1.3 What Is SQL?</h2>
+<p><strong>SQL</strong> — Structured Query Language — is the language you use to talk to a relational database. It's been around since the 1970s and is still the standard today. Every relational database understands SQL.</p>
+<p>SQL looks like readable English:</p>
+<pre><span class="sql-kw">SELECT</span> name, email
+<span class="sql-kw">FROM</span> contacts
+<span class="sql-kw">WHERE</span> name <span class="sql-kw">LIKE</span> <span class="sql-str">'A%'</span>;</pre>
+<p style="color:var(--text-muted);font-style:italic;font-size:15px;margin-top:-10px;">"Give me the name and email of every contact whose name starts with A."</p>
+
+<pre><span class="sql-kw">UPDATE</span> contacts
+<span class="sql-kw">SET</span> phone = <span class="sql-str">'0244999888'</span>
+<span class="sql-kw">WHERE</span> id = <span class="sql-num">1</span>;</pre>
+<p style="color:var(--text-muted);font-style:italic;font-size:15px;margin-top:-10px;">"Update the phone number for the contact with id 1."</p>
+
+<p>You'll be writing SQL like this fluently by the end of Part I.</p>
+
+<h2>1.4 SQLite vs PostgreSQL</h2>
+<p>Both are relational databases. Both speak SQL. But they work differently:</p>
+
+<table class="data-table">
+  <tr>
+    <th></th>
+    <th>SQLite</th>
+    <th>PostgreSQL</th>
+  </tr>
+  <tr>
+    <td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Setup</td>
+    <td>Zero — built into Python</td>
+    <td>Install a server</td>
+  </tr>
+  <tr>
+    <td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Storage</td>
+    <td>A single .db file</td>
+    <td>Managed by the server</td>
+  </tr>
+  <tr>
+    <td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Connections</td>
+    <td>One user at a time (usually)</td>
+    <td>Many simultaneous users</td>
+  </tr>
+  <tr>
+    <td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Best for</td>
+    <td>Local tools, prototypes, learning</td>
+    <td>Web apps, production, teams</td>
+  </tr>
+  <tr>
+    <td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Python library</td>
+    <td>sqlite3 (built-in, no install)</td>
+    <td>psycopg2 (pip install)</td>
+  </tr>
+</table>
+
+<div class="callout tip">
+  <div class="callout-title">💡 Which should you use?</div>
+  <div class="callout-body">
+    <p>SQLite for anything local — CLI tools, desktop apps, personal projects, prototypes. PostgreSQL when you need a server, multiple users, or production-grade reliability. This book teaches both, starting with SQLite because it requires zero setup.</p>
+  </div>
+</div>
+
+<h2>1.5 How Python Fits In</h2>
+<p>SQL is the language for talking to databases. Python is the program doing the talking. The flow looks like this:</p>
+
+<div class="diagram">Your Python program
+        │
+        │  SQL query (as a string)
+        ▼
+  Database driver
+  (sqlite3 or psycopg2)
+        │
+        │  sends to database engine
+        ▼
+   Database
+        │
+        │  results (rows of data)
+        ▼
+  Python list of tuples
+        │
+        ▼
+  Your program uses the data</div>
+
+<p>You write SQL inside Python strings. The database driver sends it to the database, gets the results back, and hands them to you as Python data structures — lists, tuples, dictionaries — that you already know how to work with.</p>
+
+<div class="exercise-block">
+  <div class="exercise-title">📝 Check Your Understanding</div>
+
+  <div class="question" data-correct="C">
+    <div class="question-text">Question 1 — What is the main advantage of a database over storing data in a plain text file?</div>
+    <ul class="options">
+      <li class="option" data-value="A"><span class="option-key">A</span> Databases use less disk space</li>
+      <li class="option" data-value="B"><span class="option-key">B</span> Databases are easier to open in a text editor</li>
+      <li class="option" data-value="C"><span class="option-key">C</span> Databases handle searching, updating, concurrent access, and data integrity efficiently</li>
+    </ul>
+    <button class="reveal-btn" data-target="q1-exp" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+    <div class="reveal-content" id="q1-exp">A database isn't just storage — it's a program that manages data intelligently. It can find one row among millions instantly, update records safely, handle multiple users at once, and prevent corruption. A text file can do none of that without custom code.</div>
+  </div>
+
+  <div class="question" data-correct="B">
+    <div class="question-text">Question 2 — What does SQL stand for?</div>
+    <ul class="options">
+      <li class="option" data-value="A"><span class="option-key">A</span> Simple Query Library</li>
+      <li class="option" data-value="B"><span class="option-key">B</span> Structured Query Language</li>
+      <li class="option" data-value="C"><span class="option-key">C</span> Standard Question Logic</li>
+    </ul>
+    <button class="reveal-btn" data-target="q2-exp" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+    <div class="reveal-content" id="q2-exp">SQL — Structured Query Language — is the standard language for relational databases. It's been around since the 1970s and is still universal today. Every relational database (SQLite, PostgreSQL, MySQL, Oracle) understands SQL.</div>
+  </div>
+
+  <div class="question" data-correct="A">
+    <div class="question-text">Question 3 — You're building a personal CLI expense tracker for your own computer. Which database makes more sense?</div>
+    <ul class="options">
+      <li class="option" data-value="A"><span class="option-key">A</span> SQLite — zero setup, single file, built into Python</li>
+      <li class="option" data-value="B"><span class="option-key">B</span> PostgreSQL — more powerful and production-ready</li>
+      <li class="option" data-value="C"><span class="option-key">C</span> Neither — use a CSV file</li>
+    </ul>
+    <button class="reveal-btn" data-target="q3-exp" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+    <div class="reveal-content" id="q3-exp">SQLite is perfect for local personal tools. No server to install, no configuration, the whole database is one .db file, and sqlite3 is already in Python's standard library. PostgreSQL's power would be overkill here — save it for when you have multiple users or need a server.</div>
+  </div>
+
+  <div class="question" data-correct="C">
+    <div class="question-text">Question 4 — What does Python receive back after sending a SQL query to a database?</div>
+    <ul class="options">
+      <li class="option" data-value="A"><span class="option-key">A</span> A raw SQL response string</li>
+      <li class="option" data-value="B"><span class="option-key">B</span> An HTML table</li>
+      <li class="option" data-value="C"><span class="option-key">C</span> Python data structures — lists of tuples or dictionaries</li>
+    </ul>
+    <button class="reveal-btn" data-target="q4-exp" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+    <div class="reveal-content" id="q4-exp">The database driver (sqlite3 or psycopg2) translates the database's response into native Python types. You get back lists of tuples by default, which you can loop over, index into, and work with just like any other Python data.</div>
+  </div>
+</div>
+
+<div class="callout checkpoint">
+  <div class="callout-title">🧠 Checkpoint — In Your Own Words</div>
+  <div class="callout-body">
+    <p>Explain the difference between SQLite and PostgreSQL, and give one example of when you'd choose each.</p>
+    <textarea class="checkpoint-input" placeholder="Write your answer here…"></textarea>
+  </div>
+</div>
+
+<div class="callout concept">
+  <div class="callout-title">📌 What to remember from this chapter</div>
+  <div class="callout-body">
+    <p>· A database stores data structurally and handles searching, updating, and concurrent access</p>
+    <p>· <strong>Relational databases</strong> organise data in tables with rows and columns</p>
+    <p>· <strong>SQL</strong> is the language for talking to relational databases</p>
+    <p>· <strong>SQLite</strong> — zero setup, one file, built into Python. Local tools.</p>
+    <p>· <strong>PostgreSQL</strong> — server-based, production-grade, multi-user. Real apps.</p>
+    <p>· SQL is the same in both — only the connection code changes</p>
+  </div>
+</div>
+
+      <div class="chapter-nav">
+        <a class="nav-btn" href="../index.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Introduction</span></a>
+        <a class="nav-btn next" href="chapter-02.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 2: Tables, Rows & Columns</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body>
+</html>

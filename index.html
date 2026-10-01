@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical Databases with Python | Practical Databases with Python</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link  active" href="index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Introduction</span>
+    </div>
+  </nav>
+  <main class="main">
+    <div class="chapter-content">
+      <div class="chapter-eyebrow">Introduction</div>
+      <h1 class="chapter-title">Practical Databases<br>with Python</h1>
+      <p class="chapter-lead">From zero to confidently storing and querying data — with SQLite for local tools and PostgreSQL for real applications.</p>
+      
+<h2>What this book is</h2>
+<p>This is a practical guide to databases for Python programmers. It assumes you already know Python fundamentals — variables, functions, loops, files. What it doesn't assume is any prior knowledge of databases, SQL, or how data is stored and retrieved.</p>
+<p>You'll go from "what even is a database?" all the way to building real Python programs that store, query, and manage data using both SQLite and PostgreSQL.</p>
+
+<h2>Why two databases?</h2>
+<div class="diagram">SQLite                          PostgreSQL
+──────────────────────────────────────────────────────
+Built into Python                Separate server
+Zero setup — just a file         Real client-server setup
+Perfect for local tools          Production-ready
+Great for learning SQL           What real apps use
+sqlite3 (standard library)       psycopg2 (pip install)
+
+SQL is the same in both — only the connection code changes.</div>
+
+<p>You'll learn SQL once. Then you'll see how to use it with SQLite first (zero setup, great for local tools), then with PostgreSQL (what you'd use in a real application or on a server).</p>
+
+<h2>Book structure</h2>
+<p><strong>Part I — SQL Fundamentals</strong> teaches you the language itself. No Python yet — just SQL. By the end you'll be fluent in SELECT, WHERE, JOIN, GROUP BY, INSERT, UPDATE, and DELETE.</p>
+<p><strong>Part II — SQLite + Python</strong> connects Python to SQLite using the built-in <code>sqlite3</code> module. You'll build real programs that create databases, store data, and query it back.</p>
+<p><strong>Part III — PostgreSQL + Python</strong> moves to a real database server. You'll connect with <code>psycopg2</code> and see what changes — and what stays exactly the same.</p>
+<p><strong>Part IV — Projects</strong> puts everything together in three complete programs you build from scratch.</p>
+
+<div class="callout concept">
+  <div class="callout-title">🔵 One language, two engines</div>
+  <div class="callout-body">
+    <p>The SQL you learn in Part I works in both SQLite and PostgreSQL. The only things that change are how you connect and a handful of syntax details. Learn it once, use it everywhere.</p>
+  </div>
+</div>
+
+      <div class="chapter-nav">
+        <span class="nav-btn disabled"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">—</span></span>
+        <a class="nav-btn next" href="chapters/chapter-01.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 1: What Is a Database?</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="js/book.js"></script>
+</body>
+</html>
