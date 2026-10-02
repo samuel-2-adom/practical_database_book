@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 15 -- Connecting with psycopg2 | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link active" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 15 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part III -- PostgreSQL + Python -- Chapter 15</div>
+    <h1 class="chapter-title">Connecting with psycopg2</h1>
+    <p class="chapter-lead">Same concepts as sqlite3, slightly different syntax. By the end you will be querying PostgreSQL from Python.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>The psycopg2 connect, cursor, execute, commit pattern</li><li>Creating PostgreSQL tables from Python</li><li>Context managers with psycopg2</li><li>RETURNING -- getting inserted row data back immediately</li><li>RealDictCursor -- dict rows in psycopg2</li></ul></div><h2>15.1 Connect and Query</h2><pre><span class="kw">import</span> psycopg2, os
+
+conn = psycopg2.<span class="fn">connect</span>(
+    dbname=os.environ[<span class="str">"DB_NAME"</span>],
+    user=os.environ[<span class="str">"DB_USER"</span>],
+    password=os.environ[<span class="str">"DB_PASS"</span>],
+    host=os.environ.<span class="fn">get</span>(<span class="str">"DB_HOST"</span>, <span class="str">"localhost"</span>)
+)
+cur = conn.<span class="fn">cursor</span>()
+cur.<span class="fn">execute</span>(<span class="str">"SELECT version();"</span>)
+<span class="fn">print</span>(cur.<span class="fn">fetchone</span>())
+conn.<span class="fn">close</span>()</pre><h2>15.2 Context Manager</h2><pre><span class="kw">with</span> psycopg2.<span class="fn">connect</span>(**db_config) <span class="kw">as</span> conn:
+    <span class="kw">with</span> conn.<span class="fn">cursor</span>() <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(<span class="str">"SELECT 1"</span>)
+        <span class="fn">print</span>(cur.<span class="fn">fetchone</span>())
+<span class="cm"># commits on clean exit, rolls back on exception</span></pre><h2>15.3 Creating Tables</h2><pre><span class="kw">def</span> <span class="fn">init_db</span>(conn):
+    <span class="kw">with</span> conn.<span class="fn">cursor</span>() <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(<span class="str">"""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id         SERIAL      PRIMARY KEY,
+                title      TEXT        NOT NULL,
+                status     TEXT        NOT NULL DEFAULT 'pending',
+                priority   TEXT        NOT NULL DEFAULT 'medium',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """</span>)
+    conn.<span class="fn">commit</span>()</pre><h2>15.4 INSERT with RETURNING</h2><pre><span class="kw">def</span> <span class="fn">add_task</span>(conn, title, priority=<span class="str">"medium"</span>):
+    <span class="kw">with</span> conn.<span class="fn">cursor</span>() <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(
+            <span class="str">"INSERT INTO tasks (title, priority) VALUES (%s, %s) RETURNING id, created_at"</span>,
+            (title, priority)
+        )
+        row = cur.<span class="fn">fetchone</span>()
+        conn.<span class="fn">commit</span>()
+        <span class="kw">return</span> {<span class="str">"id"</span>: row[<span class="num">0</span>], <span class="str">"created_at"</span>: row[<span class="num">1</span>]}</pre><h2>15.5 RealDictCursor</h2><pre><span class="kw">from</span> psycopg2.extras <span class="kw">import</span> <span class="cls">RealDictCursor</span>
+
+<span class="kw">with</span> conn.<span class="fn">cursor</span>(cursor_factory=<span class="cls">RealDictCursor</span>) <span class="kw">as</span> cur:
+    cur.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks"</span>)
+    tasks = cur.<span class="fn">fetchall</span>()
+
+<span class="kw">for</span> task <span class="kw">in</span> tasks:
+    <span class="fn">print</span>(task[<span class="str">"title"</span>], task[<span class="str">"status"</span>])  <span class="cm"># dict access by name</span></pre><div class="exercise-block"><div class="exercise-title">Exercises</div><div class="question" data-correct="C"><div class="question-text">Q1 -- What does RETURNING do in a PostgreSQL INSERT?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Returns the row count</li><li class="option" data-value="B"><span class="option-key">B</span> Rolls back if something fails</li><li class="option" data-value="C"><span class="option-key">C</span> Returns specified columns of the newly inserted row</li></ul><button class="reveal-btn" data-target="c15q1" data-show-label="Show" data-hide-label="Hide">Show</button><div class="reveal-content" id="c15q1">RETURNING gives you the auto-generated id, server defaults like NOW(), and any other columns from the new row -- immediately after insert.</div></div><div class="question" data-correct="B"><div class="question-text">Q2 -- What does RealDictCursor do?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Returns faster results</li><li class="option" data-value="B"><span class="option-key">B</span> Returns rows as Python dicts instead of tuples</li><li class="option" data-value="C"><span class="option-key">C</span> Encrypts the connection</li></ul><button class="reveal-btn" data-target="c15q2" data-show-label="Show" data-hide-label="Hide">Show</button><div class="reveal-content" id="c15q2">RealDictCursor is psycopg2's equivalent of sqlite3.Row -- access columns by name. Import from psycopg2.extras.</div></div></div><div class="callout checkpoint"><div class="callout-title">Try It</div><div class="callout-body"><p>Write get_connection() reading credentials from env vars, and init_db(conn) creating a tasks table with PostgreSQL types.</p><textarea class="checkpoint-input" style="min-height:120px;" placeholder="import os, psycopg2&#10;&#10;def get_connection():&#10;    return psycopg2.connect(...)&#10;&#10;def init_db(conn):&#10;    ..."></textarea></div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-14.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 14: Intro to PostgreSQL</span></a><a class="nav-btn next" href="chapter-16.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 16: CRUD with psycopg2</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

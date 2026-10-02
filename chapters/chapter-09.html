@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 9 — Aggregates & Grouping | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link active" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 9 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 9</div>
+    <h1 class="chapter-title">Aggregates & Grouping</h1>
+    <p class="chapter-lead">Count, sum, average, find the max and min — and group results by category. This rounds out Part I and makes your queries genuinely useful for reporting.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>Aggregate functions: COUNT, SUM, AVG, MIN, MAX</li>
+<li>GROUP BY — aggregating per category</li>
+<li>HAVING — filtering aggregated results</li>
+<li>Combining aggregates with JOINs</li>
+</ul></div>
+<h2>9.1 Aggregate Functions</h2>
+<p>Aggregate functions collapse multiple rows into a single value:</p>
+<pre><span class="sql-kw">SELECT COUNT</span>(*)          <span class="sql-kw">FROM</span> tasks;              <span class="cm">-- total rows</span>
+<span class="sql-kw">SELECT COUNT</span>(due_date)   <span class="sql-kw">FROM</span> tasks;              <span class="cm">-- non-NULL due dates</span>
+<span class="sql-kw">SELECT SUM</span>(amount)       <span class="sql-kw">FROM</span> expenses;           <span class="cm">-- total amount</span>
+<span class="sql-kw">SELECT AVG</span>(amount)       <span class="sql-kw">FROM</span> expenses;           <span class="cm">-- average amount</span>
+<span class="sql-kw">SELECT MIN</span>(created_at)   <span class="sql-kw">FROM</span> tasks;              <span class="cm">-- oldest task</span>
+<span class="sql-kw">SELECT MAX</span>(amount)       <span class="sql-kw">FROM</span> expenses;           <span class="cm">-- biggest expense</span></pre>
+<div class="callout tip"><div class="callout-title">💡 COUNT(*) vs COUNT(column)</div>
+<div class="callout-body"><p><code>COUNT(*)</code> counts all rows including NULLs. <code>COUNT(column)</code> counts only rows where that column is not NULL. Use <code>COUNT(*)</code> to count rows; use <code>COUNT(column)</code> to count non-null values in a specific column.</p></div></div>
+<h2>9.2 GROUP BY</h2>
+<p>Aggregate per category instead of across all rows:</p>
+<pre><span class="sql-kw">SELECT</span> status, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> count
+<span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">GROUP BY</span> status;</pre>
+<div class="diagram">Result:
+┌─────────────┬───────┐
+│ status      │ count │
+├─────────────┼───────┤
+│ pending     │   12  │
+│ in_progress │    3  │
+│ complete    │   27  │
+└─────────────┴───────┘</div>
+<pre><span class="sql-kw">SELECT</span> priority, status, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> count
+<span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">GROUP BY</span> priority, status
+<span class="sql-kw">ORDER BY</span> priority, status;</pre>
+<h2>9.3 HAVING — Filter After Grouping</h2>
+<p>WHERE filters rows before grouping. HAVING filters groups after aggregation:</p>
+<pre><span class="cm">-- Tags used on more than 3 notes</span>
+<span class="sql-kw">SELECT</span> t.name, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> note_count
+<span class="sql-kw">FROM</span> tags t
+<span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> t.id = nt.tag_id
+<span class="sql-kw">GROUP BY</span> t.name
+<span class="sql-kw">HAVING COUNT</span>(*) &gt; <span class="sql-num">3</span>
+<span class="sql-kw">ORDER BY</span> note_count <span class="sql-kw">DESC</span>;</pre>
+<div class="callout concept"><div class="callout-title">🔵 WHERE vs HAVING</div>
+<div class="callout-body">
+<p><strong>WHERE</strong> filters individual rows <em>before</em> they're grouped.</p>
+<p><strong>HAVING</strong> filters groups <em>after</em> aggregation.</p>
+<p>Rule: if the condition involves an aggregate function (COUNT, SUM, AVG...) → use HAVING. Otherwise → use WHERE.</p>
+</div></div>
+<h2>9.4 A Real Dashboard Query</h2>
+<pre><span class="cm">-- Task summary: count and avg per priority, pending only</span>
+<span class="sql-kw">SELECT</span>
+    priority,
+    <span class="sql-kw">COUNT</span>(*)                    <span class="sql-kw">AS</span> total,
+    <span class="sql-kw">SUM</span>(<span class="sql-kw">CASE WHEN</span> status = <span class="sql-str">'complete'</span>
+         <span class="sql-kw">THEN</span> <span class="sql-num">1</span> <span class="sql-kw">ELSE</span> <span class="sql-num">0</span> <span class="sql-kw">END</span>)   <span class="sql-kw">AS</span> done
+<span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">GROUP BY</span> priority
+<span class="sql-kw">ORDER BY</span>
+    <span class="sql-kw">CASE</span> priority
+        <span class="sql-kw">WHEN</span> <span class="sql-str">'high'</span>   <span class="sql-kw">THEN</span> <span class="sql-num">1</span>
+        <span class="sql-kw">WHEN</span> <span class="sql-str">'medium'</span> <span class="sql-kw">THEN</span> <span class="sql-num">2</span>
+        <span class="sql-kw">WHEN</span> <span class="sql-str">'low'</span>    <span class="sql-kw">THEN</span> <span class="sql-num">3</span>
+    <span class="sql-kw">END</span>;</pre>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q1 — What is the difference between WHERE and HAVING?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> They are identical — WHERE and HAVING can always be swapped</li>
+<li class="option" data-value="B"><span class="option-key">B</span> WHERE is for text columns; HAVING is for number columns</li>
+<li class="option" data-value="C"><span class="option-key">C</span> WHERE filters rows before grouping; HAVING filters groups after aggregation</li>
+</ul>
+<button class="reveal-btn" data-target="c9q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c9q1">WHERE happens before GROUP BY — it filters the raw rows. HAVING happens after GROUP BY — it filters the grouped results. You can't use aggregate functions in WHERE; you can in HAVING.</div>
+</div>
+<div class="question" data-correct="A">
+<div class="question-text">Q2 — You want categories with more than 5 items. Which clause filters this?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> HAVING COUNT(*) > 5</li>
+<li class="option" data-value="B"><span class="option-key">B</span> WHERE COUNT(*) > 5</li>
+<li class="option" data-value="C"><span class="option-key">C</span> FILTER COUNT(*) > 5</li>
+</ul>
+<button class="reveal-btn" data-target="c9q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c9q2">COUNT(*) is an aggregate function, so it must be in HAVING, not WHERE. WHERE can't reference aggregate results because aggregation hasn't happened yet at the WHERE stage.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Part I Checkpoint</div><div class="callout-body">
+<p>You've finished Part I. Without looking back, write queries for these:</p>
+<ol style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font-family:var(--font-sans);font-size:14px;color:var(--text-muted);">
+<li style="padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:var(--accent);font-family:var(--font-mono);">1.</span> Count tasks grouped by status</li>
+<li style="padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:var(--accent);font-family:var(--font-mono);">2.</span> Find all notes tagged with "python" (use joins)</li>
+<li style="padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:var(--accent);font-family:var(--font-mono);">3.</span> Get the 5 most recent high-priority pending tasks</li>
+</ol>
+<textarea class="checkpoint-input" style="min-height:140px;" placeholder="-- 1. Task counts&#10;&#10;-- 2. Notes tagged python&#10;&#10;-- 3. Top 5 urgent tasks"></textarea>
+</div></div>
+<div class="callout concept"><div class="callout-title">🎉 Part I complete</div><div class="callout-body">
+<p>You now know SQL. SELECT, WHERE, ORDER BY, LIMIT, CREATE TABLE, INSERT, UPDATE, DELETE, JOIN, GROUP BY, HAVING — that's the core of the language. In Part II you'll connect Python to a real SQLite database and use all of this from code.</p>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-08.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 8: Joins</span></a><a class="nav-btn next" href="chapter-10.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 10: Intro to sqlite3</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

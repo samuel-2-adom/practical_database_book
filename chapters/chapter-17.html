@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 17 -- SQLite vs PostgreSQL | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link active" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 17 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part III -- PostgreSQL + Python -- Chapter 17</div>
+    <h1 class="chapter-title">SQLite vs PostgreSQL</h1>
+    <p class="chapter-lead">A complete side-by-side comparison, decision guide, and map of where to go next.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>A complete side-by-side comparison of SQLite and PostgreSQL</li><li>When to use each one</li><li>Writing code that works with both</li><li>Where to go from here</li></ul></div><h2>17.1 Complete Comparison</h2><table class="data-table"><tr><th>Aspect</th><th>SQLite</th><th>PostgreSQL</th></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Setup</td><td>Zero -- built into Python</td><td>Install server + psycopg2</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Storage</td><td>Single .db file</td><td>Server manages files</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Concurrent users</td><td>One writer at a time</td><td>Many simultaneous users</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Type strictness</td><td>Flexible (type affinity)</td><td>Strict enforcement</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Auto-increment PK</td><td>INTEGER PRIMARY KEY</td><td>SERIAL PRIMARY KEY</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Placeholder</td><td>?</td><td>%s</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Python library</td><td>sqlite3 (standard lib)</td><td>psycopg2 (pip install)</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Best for</td><td>CLI tools, local apps, prototypes</td><td>Web apps, production, teams</td></tr></table><h2>17.2 When to Choose Each</h2><div class="diagram">Use SQLite when:                 Use PostgreSQL when:
+  Local CLI tool                   Web application
+  Desktop app                      Multiple users
+  Prototype / learning             Production deployment
+  Single user                      Server environment
+  No server available              Need strict types
+  Distributing a script            Need advanced features
+  Your projects: task manager,     Your projects: if you
+  notes, banking CLI               add a web front-end</div><h2>17.3 Your Three Projects -- What Makes Sense</h2><p><strong>Task Manager</strong> -- SQLite is perfect as a CLI tool. If you later add a web interface (Flask/FastAPI), migrate to PostgreSQL.</p><p><strong>Notes Manager</strong> -- SQLite for local use. The tags (many-to-many) work identically in both. SQLite first, then migrate if you ever host it.</p><p><strong>Banking Simulation</strong> -- This benefits from PostgreSQL now. Real bank transfers need strong transaction support and strict types. Good practice to start with PostgreSQL here.</p><h2>17.4 Writing Code That Works With Both</h2><pre><span class="kw">class</span> <span class="cls">Database</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, db_type=<span class="str">"sqlite"</span>, **kwargs):
+        self.db_type = db_type
+        <span class="kw">if</span> db_type == <span class="str">"sqlite"</span>:
+            <span class="kw">import</span> sqlite3
+            self.conn = sqlite3.<span class="fn">connect</span>(kwargs[<span class="str">"path"</span>])
+        <span class="kw">else</span>:
+            <span class="kw">import</span> psycopg2
+            self.conn = psycopg2.<span class="fn">connect</span>(**kwargs)
+
+    <span class="kw">def</span> <span class="fn">placeholder</span>(self):
+        <span class="kw">return</span> <span class="str">"?"</span> <span class="kw">if</span> self.db_type == <span class="str">"sqlite"</span> <span class="kw">else</span> <span class="str">"%s"</span></pre><h2>17.5 Where to Go From Here</h2><ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;font-family:var(--font-sans);font-size:15px;"><li style="padding-left:16px;color:var(--text-muted);">&#183; <strong>SQLAlchemy</strong> -- the standard Python ORM, works with both SQLite and PostgreSQL</li><li style="padding-left:16px;color:var(--text-muted);">&#183; <strong>Alembic</strong> -- database migrations (evolving your schema over time)</li><li style="padding-left:16px;color:var(--text-muted);">&#183; <strong>asyncpg</strong> -- async PostgreSQL driver for FastAPI / async Python</li><li style="padding-left:16px;color:var(--text-muted);">&#183; <strong>Supabase</strong> -- hosted PostgreSQL with a free tier, great for side projects</li><li style="padding-left:16px;color:var(--text-muted);">&#183; <strong>Indexes</strong> -- make queries on large tables fast (CREATE INDEX)</li></ul><div class="callout concept"><div class="callout-title">Congratulations on finishing Part III</div><div class="callout-body"><p>You now know SQL, SQLite with Python, and PostgreSQL with Python. The projects in Part IV bring it all together. After that, migrating your task manager, notes manager, and banking simulation will be straightforward.</p></div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-16.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 16: CRUD with psycopg2</span></a><a class="nav-btn next" href="project-01.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Project 1: CLI Contact Book</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

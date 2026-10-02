@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 16 -- CRUD with psycopg2 | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link active" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 16 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part III -- PostgreSQL + Python -- Chapter 16</div>
+    <h1 class="chapter-title">CRUD with psycopg2</h1>
+    <p class="chapter-lead">Full Create, Read, Update, Delete with psycopg2. You will see how closely it mirrors sqlite3 -- and exactly where it differs.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>Full CRUD with psycopg2 using %s placeholders</li><li>Building a reusable database helper module</li><li>Handling psycopg2 exceptions</li><li>The complete task manager migrated to PostgreSQL</li></ul></div><h2>16.1 Full CRUD Functions</h2><pre><span class="kw">import</span> psycopg2, os
+<span class="kw">from</span> psycopg2.extras <span class="kw">import</span> <span class="cls">RealDictCursor</span>
+
+<span class="kw">def</span> <span class="fn">get_conn</span>():
+    <span class="kw">return</span> psycopg2.<span class="fn">connect</span>(
+        dbname=os.environ[<span class="str">"DB_NAME"</span>], user=os.environ[<span class="str">"DB_USER"</span>],
+        password=os.environ[<span class="str">"DB_PASS"</span>], host=os.environ.<span class="fn">get</span>(<span class="str">"DB_HOST"</span>,<span class="str">"localhost"</span>)
+    )
+
+<span class="kw">def</span> <span class="fn">add_task</span>(title, priority=<span class="str">"medium"</span>):
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn, conn.<span class="fn">cursor</span>() <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(
+            <span class="str">"INSERT INTO tasks (title, priority) VALUES (%s, %s) RETURNING id"</span>,
+            (title, priority)
+        )
+        <span class="kw">return</span> cur.<span class="fn">fetchone</span>()[<span class="num">0</span>]
+
+<span class="kw">def</span> <span class="fn">get_tasks</span>(status=<span class="kw">None</span>):
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn, conn.<span class="fn">cursor</span>(cursor_factory=<span class="cls">RealDictCursor</span>) <span class="kw">as</span> cur:
+        <span class="kw">if</span> status:
+            cur.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks WHERE status=%s ORDER BY created_at DESC"</span>,(status,))
+        <span class="kw">else</span>:
+            cur.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks ORDER BY created_at DESC"</span>)
+        <span class="kw">return</span> cur.<span class="fn">fetchall</span>()
+
+<span class="kw">def</span> <span class="fn">update_status</span>(task_id, new_status):
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn, conn.<span class="fn">cursor</span>() <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(<span class="str">"UPDATE tasks SET status=%s WHERE id=%s"</span>,(new_status, task_id))
+
+<span class="kw">def</span> <span class="fn">delete_task</span>(task_id):
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn, conn.<span class="fn">cursor</span>() <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(<span class="str">"DELETE FROM tasks WHERE id=%s"</span>,(task_id,))</pre><h2>16.2 Handling psycopg2 Exceptions</h2><div class="diagram">psycopg2.Error                  (base)
+  psycopg2.IntegrityError       UNIQUE / NOT NULL violated
+  psycopg2.OperationalError     connection failed, DB not running
+  psycopg2.ProgrammingError     bad SQL, wrong column name</div><pre><span class="kw">try</span>:
+    task_id = <span class="fn">add_task</span>(<span class="str">"Learn psycopg2"</span>)
+<span class="kw">except</span> psycopg2.<span class="cls">OperationalError</span>:
+    <span class="fn">print</span>(<span class="str">"Cannot connect -- is PostgreSQL running?"</span>)
+<span class="kw">except</span> psycopg2.<span class="cls">IntegrityError</span>:
+    <span class="fn">print</span>(<span class="str">"Constraint violated"</span>)</pre><div class="callout concept"><div class="callout-title">SQLite vs psycopg2 CRUD -- side by side</div><div class="callout-body"><div class="diagram">sqlite3                         psycopg2
+conn.execute(sql, (val,))      cur.execute(sql, (val,))
+?  placeholder                 %s  placeholder
+lastrowid                      RETURNING id
+sqlite3.Row                    RealDictCursor
+sqlite3.IntegrityError         psycopg2.IntegrityError</div></div></div><div class="callout checkpoint"><div class="callout-title">Migration Challenge</div><div class="callout-body"><p>Take the sqlite3 task manager you built in Chapter 11 and migrate it to PostgreSQL. Change: ? to %s, INTEGER PRIMARY KEY to SERIAL PRIMARY KEY, sqlite3.connect to psycopg2.connect, sqlite3.Row to RealDictCursor, lastrowid to RETURNING id.</p><textarea class="checkpoint-input" style="min-height:140px;" placeholder="# Your migrated task manager here..."></textarea></div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-15.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 15: Connecting with psycopg2</span></a><a class="nav-btn next" href="chapter-17.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 17: SQLite vs PostgreSQL</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 14 -- Intro to PostgreSQL | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link active" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 14 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part III -- PostgreSQL + Python -- Chapter 14</div>
+    <h1 class="chapter-title">Intro to PostgreSQL</h1>
+    <p class="chapter-lead">Part III. SQLite is one .db file. PostgreSQL is a real server -- multi-user, production-grade, what most real applications use.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>How PostgreSQL differs from SQLite architecturally</li><li>Installing PostgreSQL and creating a database</li><li>Connecting with psycopg2</li><li>Key SQL syntax differences between SQLite and PostgreSQL</li></ul></div><div class="callout postgres"><div class="callout-title">PostgreSQL setup required</div><div class="callout-body"><p>PostgreSQL runs as a separate server process. Install from postgresql.org, then: <code>pip install psycopg2-binary</code></p></div></div><h2>14.1 Installing PostgreSQL</h2><p>Download from <strong>postgresql.org/download</strong> for your OS. After installing, open psql and create a database:</p><pre>psql -U postgres
+CREATE DATABASE myproject;
+CREATE USER myuser WITH PASSWORD 'mypassword';
+GRANT ALL PRIVILEGES ON DATABASE myproject TO myuser;</pre><h2>14.2 Connecting</h2><pre><span class="kw">import</span> psycopg2, os
+
+conn = psycopg2.<span class="fn">connect</span>(
+    dbname=os.environ[<span class="str">"DB_NAME"</span>],
+    user=os.environ[<span class="str">"DB_USER"</span>],
+    password=os.environ[<span class="str">"DB_PASS"</span>],
+    host=os.environ.<span class="fn">get</span>(<span class="str">"DB_HOST"</span>, <span class="str">"localhost"</span>)
+)</pre><div class="callout warning"><div class="callout-title">Never hardcode credentials</div><div class="callout-body"><p>Store connection details in environment variables. Same rule as API keys in the HTTP book.</p></div></div><h2>14.3 Key Differences from SQLite</h2><table class="data-table"><tr><th></th><th>SQLite</th><th>PostgreSQL</th></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Auto-increment PK</td><td>INTEGER PRIMARY KEY</td><td>SERIAL PRIMARY KEY</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Boolean</td><td>INTEGER (0/1)</td><td>BOOLEAN (true/false)</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Timestamps</td><td>TEXT (ISO string)</td><td>TIMESTAMP / TIMESTAMPTZ</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Query placeholder</td><td>?</td><td>%s</td></tr><tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Auto-commit</td><td>Yes (context manager)</td><td>No -- must commit explicitly</td></tr></table><div class="callout concept"><div class="callout-title">The biggest difference: %s not ?</div><div class="callout-body"><p>psycopg2 uses <code>%s</code> as the placeholder, not <code>?</code>. This is the most common gotcha when switching. Everything else is nearly identical.</p></div></div><div class="exercise-block"><div class="exercise-title">Exercises</div><div class="question" data-correct="B"><div class="question-text">Q1 -- What placeholder does psycopg2 use?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> ?</li><li class="option" data-value="B"><span class="option-key">B</span> %s</li><li class="option" data-value="C"><span class="option-key">C</span> {}</li></ul><button class="reveal-btn" data-target="c14q1" data-show-label="Show" data-hide-label="Hide">Show</button><div class="reveal-content" id="c14q1">psycopg2 uses %s. Despite looking like Python string formatting, psycopg2 handles it safely via the database driver. Never use actual % string formatting for SQL.</div></div><div class="question" data-correct="C"><div class="question-text">Q2 -- How do you define an auto-incrementing PK in PostgreSQL?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> INTEGER PRIMARY KEY</li><li class="option" data-value="B"><span class="option-key">B</span> AUTO_INCREMENT PRIMARY KEY</li><li class="option" data-value="C"><span class="option-key">C</span> SERIAL PRIMARY KEY</li></ul><button class="reveal-btn" data-target="c14q2" data-show-label="Show" data-hide-label="Hide">Show</button><div class="reveal-content" id="c14q2">PostgreSQL uses SERIAL for auto-incrementing integers. In modern PostgreSQL you can also use GENERATED ALWAYS AS IDENTITY.</div></div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-13.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 13: Transactions and Errors</span></a><a class="nav-btn next" href="chapter-15.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 15: Connecting with psycopg2</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

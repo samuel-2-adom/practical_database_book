@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 10 -- Intro to sqlite3 | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link active" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 10 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 10</div>
+    <h1 class="chapter-title">Intro to sqlite3</h1>
+    <p class="chapter-lead">Part II starts here. You already know SQL -- now use it from Python. sqlite3 is built in, nothing to install.</p>
+
+    <div class="objectives"><div class="objectives-title">What you will learn</div><ul>
+    <li>How sqlite3 connects Python to a database</li>
+    <li>The connection, cursor, execute, commit workflow</li>
+    <li>Creating a table from Python</li>
+    <li>Context managers -- the clean way</li>
+    </ul></div>
+
+    <div class="callout sqlite"><div class="callout-title">SQLite -- no setup needed</div>
+    <div class="callout-body"><p>sqlite3 is in Python standard library. No pip install, no server. Database is a single .db file created automatically on connect.</p></div></div>
+
+    <h2>10.1 Connecting</h2>
+    <pre><span class="kw">import</span> sqlite3
+
+conn   = sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>)  <span class="cm"># creates file if missing</span>
+cursor = conn.<span class="fn">cursor</span>()
+conn.<span class="fn">close</span>()
+
+conn = sqlite3.<span class="fn">connect</span>(<span class="str">":memory:"</span>)   <span class="cm"># in-memory, gone on exit</span></pre>
+
+    <h2>10.2 Core Workflow</h2>
+    <div class="diagram">sqlite3.connect("file.db")  --&gt;  connection
+conn.cursor()               --&gt;  cursor
+cursor.execute("SQL")       --&gt;  run statement
+conn.commit()               --&gt;  save changes
+cursor.fetchall()           --&gt;  get SELECT results
+conn.close()                --&gt;  clean up</div>
+
+    <h2>10.3 Creating a Table</h2>
+    <pre><span class="kw">import</span> sqlite3
+
+<span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+    conn.<span class="fn">execute</span>(
+        <span class="str">"CREATE TABLE IF NOT EXISTS tasks ("</span>
+        <span class="str">"id INTEGER PRIMARY KEY, "</span>
+        <span class="str">"title TEXT NOT NULL, "</span>
+        <span class="str">"status TEXT NOT NULL DEFAULT 'pending', "</span>
+        <span class="str">"priority TEXT NOT NULL DEFAULT 'medium', "</span>
+        <span class="str">"created_at TEXT NOT NULL)"</span>
+    )</pre>
+
+    <div class="callout tip"><div class="callout-title">Always use: with sqlite3.connect() as conn</div>
+    <div class="callout-body"><p>Closes automatically, commits on success, rolls back on error. Use it for everything.</p></div></div>
+
+    <h2>10.4 Complete Setup Function</h2>
+    <pre><span class="kw">import</span> sqlite3
+
+DB = <span class="str">"tasks.db"</span>
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(
+            <span class="str">"CREATE TABLE IF NOT EXISTS tasks ("</span>
+            <span class="str">"id INTEGER PRIMARY KEY, title TEXT NOT NULL, "</span>
+            <span class="str">"status TEXT NOT NULL DEFAULT 'pending', "</span>
+            <span class="str">"priority TEXT NOT NULL DEFAULT 'medium', "</span>
+            <span class="str">"created_at TEXT NOT NULL)"</span>
+        )
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Ready: {DB}"</span>)
+
+<span class="fn">init_db</span>()</pre>
+
+    <div class="exercise-block"><div class="exercise-title">Exercises</div>
+    <div class="question" data-correct="B">
+    <div class="question-text">Q1 -- What happens when you connect to a .db file that does not exist?</div>
+    <ul class="options">
+    <li class="option" data-value="A"><span class="option-key">A</span> FileNotFoundError is raised</li>
+    <li class="option" data-value="B"><span class="option-key">B</span> SQLite creates the file automatically</li>
+    <li class="option" data-value="C"><span class="option-key">C</span> Returns None</li>
+    </ul>
+    <button class="reveal-btn" data-target="c10q1" data-show-label="Show" data-hide-label="Hide">Show explanation</button>
+    <div class="reveal-content" id="c10q1">SQLite creates the .db file automatically. No manual file creation needed -- just connect and start working.</div>
+    </div>
+    <div class="question" data-correct="C">
+    <div class="question-text">Q2 -- What is a cursor?</div>
+    <ul class="options">
+    <li class="option" data-value="A"><span class="option-key">A</span> A pointer to one specific row</li>
+    <li class="option" data-value="B"><span class="option-key">B</span> The database connection itself</li>
+    <li class="option" data-value="C"><span class="option-key">C</span> An object that executes SQL and retrieves results</li>
+    </ul>
+    <button class="reveal-btn" data-target="c10q2" data-show-label="Show" data-hide-label="Hide">Show explanation</button>
+    <div class="reveal-content" id="c10q2">cursor.execute() runs SQL and cursor.fetchall() gets results. Separate from the connection object.</div>
+    </div></div>
+
+    <div class="callout checkpoint"><div class="callout-title">Try It</div><div class="callout-body">
+    <p>Write init_db() that creates a notes table with: id, title, content, created_at. Run it and verify the .db file appears in your folder.</p>
+    <textarea class="checkpoint-input" placeholder="import sqlite3&#10;&#10;def init_db():&#10;    with sqlite3.connect('notes.db') as conn:&#10;        conn.execute(...)"></textarea>
+    </div></div>
+
+    <div class="chapter-nav">
+      <a class="nav-btn" href="chapter-09.html"><span class="nav-btn-dir">Previous</span><span class="nav-btn-title">Chapter 9: Aggregates and Grouping</span></a>
+      <a class="nav-btn next" href="chapter-11.html"><span class="nav-btn-dir">Next</span><span class="nav-btn-title">Chapter 11: CRUD with sqlite3</span></a>
+    </div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

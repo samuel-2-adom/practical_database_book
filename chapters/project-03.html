@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project 3 -- Notes App with Tags | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link active" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Project 3 of 3</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part IV -- Projects -- Project 3</div>
+    <h1 class="chapter-title">Notes App with Tags</h1>
+    <p class="chapter-lead">Migrate your notes manager from JSON to SQLite -- including the many-to-many tag relationship. The most complete project in the book.</p>
+<div class="callout concept"><div class="callout-title">Project overview</div><div class="callout-body"><p>Migrate your existing notes manager from JSON to SQLite -- including the many-to-many tag relationship. This is the most technically complete project in the book.</p><p><strong>Skills used:</strong> Three tables &middot; junction table &middot; many-to-many joins &middot; GROUP_CONCAT &middot; full-text search &middot; transactions</p></div></div><h2>Database Schema</h2><pre><span class="sql-kw">CREATE TABLE</span> notes (
+    id         <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    title      <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    content    <span class="sql-type">TEXT</span>,
+    created_at <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    updated_at <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> tags (
+    id   <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    name <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL UNIQUE</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> note_tags (      <span class="cm">-- junction table</span>
+    note_id <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> notes(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+    tag_id  <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> tags(id),
+    <span class="sql-kw">PRIMARY KEY</span>(note_id, tag_id)
+);</pre><h2>Key Queries</h2><pre><span class="cm">-- Note with all its tags as a comma-separated string</span>
+<span class="sql-kw">SELECT</span> n.id, n.title, <span class="sql-kw">GROUP_CONCAT</span>(t.name, <span class="sql-str">', '</span>) <span class="sql-kw">AS</span> tags
+<span class="sql-kw">FROM</span> notes n
+<span class="sql-kw">LEFT JOIN</span> note_tags nt <span class="sql-kw">ON</span> n.id = nt.note_id
+<span class="sql-kw">LEFT JOIN</span> tags t       <span class="sql-kw">ON</span> nt.tag_id = t.id
+<span class="sql-kw">GROUP BY</span> n.id
+<span class="sql-kw">ORDER BY</span> n.updated_at <span class="sql-kw">DESC</span>;
+
+<span class="cm">-- Find all notes with a specific tag</span>
+<span class="sql-kw">SELECT</span> n.title <span class="sql-kw">FROM</span> notes n
+<span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> n.id = nt.note_id
+<span class="sql-kw">JOIN</span> tags t       <span class="sql-kw">ON</span> nt.tag_id = t.id
+<span class="sql-kw">WHERE</span> t.name = ?;</pre><h2>Core Functions</h2><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+DB = <span class="str">"notes.db"</span>
+
+<span class="kw">def</span> <span class="fn">add_note</span>(title, content, tags=<span class="kw">None</span>):
+    now = datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>()
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"INSERT INTO notes (title,content,created_at,updated_at) VALUES (?,?,?,?)"</span>,
+            (title, content, now, now)
+        )
+        note_id = cur.lastrowid
+        <span class="kw">if</span> tags:
+            <span class="fn">_attach_tags</span>(conn, note_id, tags)
+    <span class="kw">return</span> note_id
+
+<span class="kw">def</span> <span class="fn">_attach_tags</span>(conn, note_id, tag_names):
+    <span class="kw">for</span> name <span class="kw">in</span> tag_names:
+        conn.<span class="fn">execute</span>(<span class="str">"INSERT OR IGNORE INTO tags (name) VALUES (?)"</span>, (name,))
+        tag = conn.<span class="fn">execute</span>(
+            <span class="str">"SELECT id FROM tags WHERE name=?"</span>, (name,)
+        ).<span class="fn">fetchone</span>()
+        conn.<span class="fn">execute</span>(
+            <span class="str">"INSERT OR IGNORE INTO note_tags (note_id,tag_id) VALUES (?,?)"</span>,
+            (note_id, tag[<span class="num">0</span>])
+        )
+
+<span class="kw">def</span> <span class="fn">find_by_tag</span>(tag_name):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"SELECT n.id, n.title, n.updated_at FROM notes n "
+            "JOIN note_tags nt ON n.id=nt.note_id "
+            "JOIN tags t ON nt.tag_id=t.id "
+            "WHERE t.name=? ORDER BY n.updated_at DESC"</span>,
+            (tag_name,)
+        )
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]
+
+<span class="kw">def</span> <span class="fn">search_notes</span>(query):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"SELECT id, title FROM notes WHERE title LIKE ? OR content LIKE ?"</span>,
+            (<span class="fn">f</span><span class="str">"%{query}%"</span>, <span class="fn">f</span><span class="str">"%{query}%"</span>)
+        )
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]</pre><h2>The Migration Insight</h2><div class="diagram">JSON approach (what you had):          SQLite approach (what you have now):
+
+"notes": [                              notes table + tags table + note_tags
+  {"title": "...",                        -- one row per relationship
+   "tags": ["python","learning"]}         -- query by tag with JOIN
+]                                         -- search with LIKE
+                                          -- no manual filter functions
+Filter by tag: loop all notes,           Filter by tag: one SQL JOIN query
+  check each tag list manually           Search: one SQL LIKE query</div><div class="callout concept"><div class="callout-title">Congratulations -- you finished the book</div><div class="callout-body"><p>You now know SQL fundamentals, SQLite with Python, and PostgreSQL with Python. Your three OOP projects -- task manager, notes manager, banking simulation -- can all be migrated using exactly what you learned here.</p><p>The JSON filtering functions you wrote manually? They are now single SQL queries. That is the power of databases.</p></div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="project-02.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Project 2: Expense Tracker</span></a><a class="nav-btn next" href="sql-cheatsheet.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">SQL Cheat Sheet</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

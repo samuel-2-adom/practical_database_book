@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project 1 -- CLI Contact Book | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link active" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Project 1 of 3</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part IV -- Projects -- Project 1</div>
+    <h1 class="chapter-title">CLI Contact Book</h1>
+    <p class="chapter-lead">A complete command-line contact manager backed by SQLite. Add, search, and delete contacts with full error handling.</p>
+<div class="callout concept"><div class="callout-title">Project overview</div><div class="callout-body"><p>Build a CLI contact book backed by SQLite. Add, search, update and delete contacts. Uses sqlite3, parameterised queries, and row factories. Single-file project you can run anywhere.</p><p><strong>Skills used:</strong> sqlite3 &middot; CREATE TABLE &middot; INSERT &middot; SELECT &middot; UPDATE &middot; DELETE &middot; LIKE search &middot; row factory &middot; error handling</p></div></div><h2>Database Schema</h2><pre><span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> contacts (
+    id      <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    name    <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    email   <span class="sql-type">TEXT</span>    <span class="sql-kw">UNIQUE</span>,
+    phone   <span class="sql-type">TEXT</span>,
+    notes   <span class="sql-type">TEXT</span>
+);</pre><h2>Complete Code</h2><pre><span class="kw">import</span> sqlite3
+
+DB = <span class="str">"contacts.db"</span>
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(<span class="str">"CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY, name TEXT NOT NULL,
+            email TEXT UNIQUE, phone TEXT, notes TEXT)"</span>)
+
+<span class="kw">def</span> <span class="fn">add_contact</span>(name, email=<span class="kw">None</span>, phone=<span class="kw">None</span>, notes=<span class="kw">None</span>):
+    <span class="kw">try</span>:
+        <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+            cur = conn.<span class="fn">execute</span>(
+                <span class="str">"INSERT INTO contacts (name,email,phone,notes) VALUES (?,?,?,?)"</span>,
+                (name, email, phone, notes)
+            )
+            <span class="kw">return</span> cur.lastrowid
+    <span class="kw">except</span> sqlite3.<span class="cls">IntegrityError</span>:
+        <span class="fn">print</span>(<span class="str">"Email already exists."</span>)
+        <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="kw">def</span> <span class="fn">search_contacts</span>(query):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"SELECT * FROM contacts WHERE name LIKE ? OR email LIKE ? ORDER BY name"</span>,
+            (<span class="fn">f</span><span class="str">"%{query}%"</span>, <span class="fn">f</span><span class="str">"%{query}%"</span>)
+        )
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]
+
+<span class="kw">def</span> <span class="fn">delete_contact</span>(contact_id):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(<span class="str">"DELETE FROM contacts WHERE id=?"</span>, (contact_id,))
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    <span class="fn">init_db</span>()
+    <span class="kw">while</span> <span class="kw">True</span>:
+        <span class="fn">print</span>(<span class="str">"\n1. Add  2. Search  3. Delete  4. Quit"</span>)
+        choice = <span class="fn">input</span>(<span class="str">"Choice: "</span>).strip()
+        <span class="kw">if</span> choice == <span class="str">"1"</span>:
+            name  = <span class="fn">input</span>(<span class="str">"Name: "</span>)
+            email = <span class="fn">input</span>(<span class="str">"Email (optional): "</span>) <span class="kw">or</span> <span class="kw">None</span>
+            phone = <span class="fn">input</span>(<span class="str">"Phone (optional): "</span>) <span class="kw">or</span> <span class="kw">None</span>
+            cid = <span class="fn">add_contact</span>(name, email, phone)
+            <span class="kw">if</span> cid: <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Added contact #{cid}"</span>)
+        <span class="kw">elif</span> choice == <span class="str">"2"</span>:
+            q = <span class="fn">input</span>(<span class="str">"Search: "</span>)
+            results = <span class="fn">search_contacts</span>(q)
+            <span class="kw">for</span> c <span class="kw">in</span> results:
+                <span class="fn">print</span>(<span class="fn">f</span><span class="str">"  [{c['id']}] {c['name']} | {c['email']} | {c['phone']}"</span>)
+        <span class="kw">elif</span> choice == <span class="str">"3"</span>:
+            cid = <span class="fn">int</span>(<span class="fn">input</span>(<span class="str">"Contact ID to delete: "</span>))
+            <span class="fn">delete_contact</span>(cid); <span class="fn">print</span>(<span class="str">"Deleted."</span>)
+        <span class="kw">elif</span> choice == <span class="str">"4"</span>: <span class="kw">break</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>: <span class="fn">main</span>()</pre><h2>Extensions to try</h2><ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font-family:var(--font-sans);font-size:15px;"><li style="padding-left:16px;color:var(--text-muted);">&#183; Add an update_contact() function</li><li style="padding-left:16px;color:var(--text-muted);">&#183; Export contacts to CSV using Python csv module</li><li style="padding-left:16px;color:var(--text-muted);">&#183; Add a tags table (many-to-many, like your notes manager)</li><li style="padding-left:16px;color:var(--text-muted);">&#183; Migrate to PostgreSQL -- change sqlite3.connect to psycopg2.connect and ? to %s</li></ul>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-17.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 17: SQLite vs PostgreSQL</span></a><a class="nav-btn next" href="project-02.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Project 2: Expense Tracker</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

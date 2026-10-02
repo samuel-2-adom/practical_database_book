@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 6 — Creating & Modifying Tables | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link active" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 6 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 6</div>
+    <h1 class="chapter-title">Creating & Modifying Tables</h1>
+    <p class="chapter-lead">So far you've queried tables that already exist. Now you'll build them yourself — defining their structure, constraints, and rules.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>CREATE TABLE — defining a table from scratch</li>
+<li>Column constraints: NOT NULL, UNIQUE, DEFAULT</li>
+<li>ALTER TABLE — modifying an existing table</li>
+<li>DROP TABLE — deleting a table</li>
+<li>Designing a schema for your own projects</li>
+</ul></div>
+<h2>6.1 CREATE TABLE</h2>
+<pre><span class="sql-kw">CREATE TABLE</span> tasks (
+    id          <span class="sql-type">INTEGER</span>   <span class="sql-kw">PRIMARY KEY</span>,
+    title       <span class="sql-type">TEXT</span>      <span class="sql-kw">NOT NULL</span>,
+    status      <span class="sql-type">TEXT</span>      <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-str">'pending'</span>,
+    priority    <span class="sql-type">TEXT</span>      <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-str">'medium'</span>,
+    created_at  <span class="sql-type">TEXT</span>      <span class="sql-kw">NOT NULL</span>
+);</pre>
+<p>Breaking it down:</p>
+<div class="diagram">id INTEGER PRIMARY KEY
+│  │       │
+│  │       └── this column uniquely identifies each row
+│  └────────── data type: whole numbers
+└────────────── column name
+
+title TEXT NOT NULL
+              │
+              └── this column must always have a value (never NULL)
+
+status TEXT NOT NULL DEFAULT 'pending'
+                     │
+                     └── if no value given, use 'pending'</div>
+<h2>6.2 CREATE TABLE IF NOT EXISTS</h2>
+<p>If you run CREATE TABLE twice on the same table, you get an error. Use IF NOT EXISTS to avoid this — useful when your Python program creates the table on startup:</p>
+<pre><span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> tasks (
+    id    <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    title <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>
+);</pre>
+<h2>6.3 Column Constraints</h2>
+<table class="data-table">
+<tr><th>Constraint</th><th>Meaning</th></tr>
+<tr><td>PRIMARY KEY</td><td>Unique, never NULL, identifies the row</td></tr>
+<tr><td>NOT NULL</td><td>Column must always have a value</td></tr>
+<tr><td>UNIQUE</td><td>No two rows can have the same value</td></tr>
+<tr><td>DEFAULT value</td><td>Use this value if none is provided</td></tr>
+<tr><td>CHECK (condition)</td><td>Value must satisfy this condition</td></tr>
+</table>
+<pre><span class="sql-kw">CREATE TABLE</span> users (
+    id       <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    username <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL UNIQUE</span>,
+    email    <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL UNIQUE</span>,
+    age      <span class="sql-type">INTEGER</span> <span class="sql-kw">CHECK</span>(age &gt;= <span class="sql-num">0</span>)
+);</pre>
+<h2>6.4 ALTER TABLE</h2>
+<p>Add a column to an existing table:</p>
+<pre><span class="sql-kw">ALTER TABLE</span> tasks
+<span class="sql-kw">ADD COLUMN</span> due_date <span class="sql-type">TEXT</span>;</pre>
+<div class="callout warning"><div class="callout-title">⚠️ SQLite ALTER TABLE is limited</div>
+<div class="callout-body"><p>SQLite only supports ADD COLUMN — you can't rename or drop a column directly. PostgreSQL supports the full ALTER TABLE spec including RENAME COLUMN, DROP COLUMN, and ALTER COLUMN. Plan your schema carefully before building on SQLite.</p></div></div>
+<h2>6.5 DROP TABLE</h2>
+<pre><span class="sql-kw">DROP TABLE</span> tasks;              <span class="cm">-- error if table doesn't exist</span>
+<span class="sql-kw">DROP TABLE IF EXISTS</span> tasks;   <span class="cm">-- safe version</span></pre>
+<div class="callout mistake"><div class="callout-title">⚠️ DROP TABLE is permanent</div>
+<div class="callout-body"><p>DROP TABLE deletes the table and all its data instantly, with no undo. There is no recycle bin. Always double-check before running it, and never run it in a script without IF EXISTS as a safety check.</p></div></div>
+<h2>6.6 Designing Your Tasks Table</h2>
+<p>Here's a well-designed schema for the task manager you already built in Python — this is exactly the table you'll create in Part II:</p>
+<pre><span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> tasks (
+    id          <span class="sql-type">INTEGER</span>  <span class="sql-kw">PRIMARY KEY</span>,
+    title       <span class="sql-type">TEXT</span>     <span class="sql-kw">NOT NULL</span>,
+    description <span class="sql-type">TEXT</span>,
+    status      <span class="sql-type">TEXT</span>     <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-str">'pending'</span>
+                         <span class="sql-kw">CHECK</span>(status <span class="sql-kw">IN</span> (<span class="sql-str">'pending'</span>,<span class="sql-str">'in_progress'</span>,<span class="sql-str">'complete'</span>)),
+    priority    <span class="sql-type">TEXT</span>     <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-str">'medium'</span>
+                         <span class="sql-kw">CHECK</span>(priority <span class="sql-kw">IN</span> (<span class="sql-str">'low'</span>,<span class="sql-str">'medium'</span>,<span class="sql-str">'high'</span>)),
+    created_at  <span class="sql-type">TEXT</span>     <span class="sql-kw">NOT NULL</span>
+);</pre>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="B">
+<div class="question-text">Q1 — What does DEFAULT 'pending' do in a column definition?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> Forces every row to have the value 'pending'</li>
+<li class="option" data-value="B"><span class="option-key">B</span> Uses 'pending' if no value is provided when inserting a row</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Renames the column to 'pending'</li>
+</ul>
+<button class="reveal-btn" data-target="c6q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c6q1">DEFAULT provides a fallback value. If you INSERT a row without providing a value for that column, the database uses the default. You can still override it by providing your own value.</div>
+</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q2 — Which keyword makes it safe to run CREATE TABLE even if the table already exists?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> CREATE OR REPLACE TABLE</li>
+<li class="option" data-value="B"><span class="option-key">B</span> CREATE SAFE TABLE</li>
+<li class="option" data-value="C"><span class="option-key">C</span> CREATE TABLE IF NOT EXISTS</li>
+</ul>
+<button class="reveal-btn" data-target="c6q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c6q2">IF NOT EXISTS makes the statement a no-op if the table already exists, instead of raising an error. Essential for Python programs that create tables on startup — you don't want it to fail on the second run.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint — Design Your Notes Table</div><div class="callout-body">
+<p>Write the CREATE TABLE statement for your notes manager. Include: id (primary key), title (required), content, created_at (required), and updated_at. Add appropriate constraints.</p>
+<textarea class="checkpoint-input" placeholder="CREATE TABLE IF NOT EXISTS notes (&#10;    ...&#10;);"></textarea>
+<button class="reveal-btn" data-target="c6cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c6cp"><pre><span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> notes (
+    id         <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    title      <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    content    <span class="sql-type">TEXT</span>,
+    created_at <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    updated_at <span class="sql-type">TEXT</span>
+);</pre></div>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-05.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 5: Sorting & Limiting</span></a><a class="nav-btn next" href="chapter-07.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 7: Inserting, Updating & Deleting</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

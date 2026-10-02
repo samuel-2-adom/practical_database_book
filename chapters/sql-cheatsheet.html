@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Cheat Sheet | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link active" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Reference</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Reference</div>
+    <h1 class="chapter-title">SQL Cheat Sheet</h1>
+    <p class="chapter-lead">Every SQL statement and Python pattern from this book, in one place.</p>
+<h2>SELECT</h2><pre><span class="sql-kw">SELECT</span> col1, col2 <span class="sql-kw">FROM</span> table;
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> table;
+<span class="sql-kw">SELECT DISTINCT</span> col <span class="sql-kw">FROM</span> table;
+<span class="sql-kw">SELECT</span> col <span class="sql-kw">AS</span> alias <span class="sql-kw">FROM</span> table;</pre><h2>Filtering</h2><pre><span class="sql-kw">WHERE</span> col = <span class="sql-str">'value'</span>
+<span class="sql-kw">WHERE</span> col != <span class="sql-str">'value'</span>
+<span class="sql-kw">WHERE</span> col &gt; <span class="sql-num">10</span>
+<span class="sql-kw">WHERE</span> col <span class="sql-kw">BETWEEN</span> <span class="sql-num">1</span> <span class="sql-kw">AND</span> <span class="sql-num">100</span>
+<span class="sql-kw">WHERE</span> col <span class="sql-kw">LIKE</span> <span class="sql-str">'A%'</span>       <span class="cm">-- starts with A</span>
+<span class="sql-kw">WHERE</span> col <span class="sql-kw">IN</span> (<span class="sql-str">'a'</span>, <span class="sql-str">'b'</span>)
+<span class="sql-kw">WHERE</span> col <span class="sql-kw">IS NULL</span>
+<span class="sql-kw">WHERE</span> col <span class="sql-kw">IS NOT NULL</span>
+<span class="sql-kw">WHERE</span> a <span class="sql-kw">AND</span> b
+<span class="sql-kw">WHERE</span> a <span class="sql-kw">OR</span> b
+<span class="sql-kw">WHERE NOT</span> a</pre><h2>Sorting and Limiting</h2><pre><span class="sql-kw">ORDER BY</span> col <span class="sql-kw">ASC</span>
+<span class="sql-kw">ORDER BY</span> col <span class="sql-kw">DESC</span>
+<span class="sql-kw">ORDER BY</span> col1 <span class="sql-kw">ASC</span>, col2 <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">10</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">10</span> <span class="sql-kw">OFFSET</span> <span class="sql-num">20</span>     <span class="cm">-- page 3 of 10-per-page</span></pre><h2>Aggregates</h2><pre><span class="sql-kw">SELECT COUNT</span>(*) <span class="sql-kw">FROM</span> table;
+<span class="sql-kw">SELECT SUM</span>(col) <span class="sql-kw">FROM</span> table;
+<span class="sql-kw">SELECT AVG</span>(col) <span class="sql-kw">FROM</span> table;
+<span class="sql-kw">SELECT MIN</span>(col), <span class="sql-kw">MAX</span>(col) <span class="sql-kw">FROM</span> table;
+
+<span class="sql-kw">SELECT</span> col, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">FROM</span> table <span class="sql-kw">GROUP BY</span> col;
+<span class="sql-kw">HAVING COUNT</span>(*) &gt; <span class="sql-num">5</span>    <span class="cm">-- filter after grouping</span></pre><h2>Joins</h2><pre><span class="sql-kw">SELECT</span> a.col, b.col
+<span class="sql-kw">FROM</span> table_a a
+<span class="sql-kw">JOIN</span> table_b b <span class="sql-kw">ON</span> a.id = b.a_id;     <span class="cm">-- INNER JOIN</span>
+
+<span class="sql-kw">LEFT JOIN</span> table_b b <span class="sql-kw">ON</span> a.id = b.a_id; <span class="cm">-- all a, matched b or NULL</span></pre><h2>INSERT / UPDATE / DELETE</h2><pre><span class="sql-kw">INSERT INTO</span> table (col1, col2) <span class="sql-kw">VALUES</span> (<span class="sql-str">'a'</span>, <span class="sql-num">1</span>);
+
+<span class="sql-kw">UPDATE</span> table <span class="sql-kw">SET</span> col = <span class="sql-str">'value'</span> <span class="sql-kw">WHERE</span> id = <span class="sql-num">1</span>;
+
+<span class="sql-kw">DELETE FROM</span> table <span class="sql-kw">WHERE</span> id = <span class="sql-num">1</span>;</pre><h2>Create / Drop</h2><pre><span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> t (
+    id      <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,          <span class="cm">-- SQLite</span>
+    id      <span class="sql-type">SERIAL</span>  <span class="sql-kw">PRIMARY KEY</span>,          <span class="cm">-- PostgreSQL</span>
+    name    <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    email   <span class="sql-type">TEXT</span>    <span class="sql-kw">UNIQUE</span>,
+    status  <span class="sql-type">TEXT</span>    <span class="sql-kw">DEFAULT</span> <span class="sql-str">'active'</span>,
+    age     <span class="sql-type">INTEGER</span> <span class="sql-kw">CHECK</span>(age &gt;= 0)
+);
+
+<span class="sql-kw">DROP TABLE IF EXISTS</span> t;
+<span class="sql-kw">ALTER TABLE</span> t <span class="sql-kw">ADD COLUMN</span> phone <span class="sql-type">TEXT</span>;</pre><h2>Python -- sqlite3</h2><pre><span class="kw">import</span> sqlite3
+
+<span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"db.sqlite3"</span>) <span class="kw">as</span> conn:
+    conn.row_factory = sqlite3.<span class="cls">Row</span>
+    cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM t WHERE id=?"</span>, (1,))
+    row = cur.<span class="fn">fetchone</span>()       <span class="cm">-- one row or None</span>
+    rows = cur.<span class="fn">fetchall</span>()     <span class="cm">-- list of rows</span>
+    <span class="fn">dict</span>(row)                  <span class="cm">-- convert to dict</span>
+
+    conn.<span class="fn">execute</span>(<span class="str">"INSERT INTO t (name) VALUES (?)"</span>, (name,))
+    <span class="cm">-- ? placeholder, (value,) tuple, trailing comma for one value</span></pre><h2>Python -- psycopg2</h2><pre><span class="kw">import</span> psycopg2
+<span class="kw">from</span> psycopg2.extras <span class="kw">import</span> <span class="cls">RealDictCursor</span>
+
+<span class="kw">with</span> psycopg2.<span class="fn">connect</span>(dbname=<span class="str">"db"</span>, user=<span class="str">"u"</span>, password=<span class="str">"p"</span>) <span class="kw">as</span> conn:
+    <span class="kw">with</span> conn.<span class="fn">cursor</span>(cursor_factory=<span class="cls">RealDictCursor</span>) <span class="kw">as</span> cur:
+        cur.<span class="fn">execute</span>(<span class="str">"SELECT * FROM t WHERE id=%s"</span>, (1,))
+        row  = cur.<span class="fn">fetchone</span>()
+        rows = cur.<span class="fn">fetchall</span>()
+
+        cur.<span class="fn">execute</span>(<span class="str">"INSERT INTO t (name) VALUES (%s) RETURNING id"</span>, (name,))
+        new_id = cur.<span class="fn">fetchone</span>()[<span class="str">"id"</span>]
+    <span class="cm">-- %s placeholder  |  RETURNING for new row data</span></pre><h2>SQLite vs PostgreSQL Quick Diff</h2><div class="diagram">Feature               SQLite              PostgreSQL
+Auto PK               INTEGER PK          SERIAL PK
+Bool                  INTEGER 0/1         BOOLEAN true/false
+Timestamp             TEXT ISO            TIMESTAMPTZ
+Placeholder           ?                   %s
+Dict rows             sqlite3.Row         RealDictCursor
+New row id            cur.lastrowid       RETURNING id
+Library               sqlite3 (built-in)  psycopg2 (pip)</div>
+    <div class="chapter-nav"><a class="nav-btn" href="project-03.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Project 3: Notes App with Tags</span></a><a class="nav-btn next" href="glossary.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Glossary</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

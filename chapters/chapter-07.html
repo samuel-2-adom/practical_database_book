@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 7 — Inserting, Updating & Deleting | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link active" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 7 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 7</div>
+    <h1 class="chapter-title">Inserting, Updating & Deleting</h1>
+    <p class="chapter-lead">SELECT reads data. INSERT, UPDATE, and DELETE change it. Together these four statements are everything you need to manage data in a table.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>INSERT INTO — adding new rows</li>
+<li>UPDATE — modifying existing rows</li>
+<li>DELETE — removing rows</li>
+<li>The critical importance of WHERE with UPDATE and DELETE</li>
+</ul></div>
+<h2>7.1 INSERT INTO</h2>
+<p>Add a new row to a table:</p>
+<pre><span class="sql-kw">INSERT INTO</span> tasks (title, status, priority, created_at)
+<span class="sql-kw">VALUES</span> (<span class="sql-str">'Learn SQL'</span>, <span class="sql-str">'pending'</span>, <span class="sql-str">'high'</span>, <span class="sql-str">'2024-01-15'</span>);</pre>
+<p>You don't include <code>id</code> — it auto-increments. Column order must match value order.</p>
+<p>Insert multiple rows at once:</p>
+<pre><span class="sql-kw">INSERT INTO</span> tasks (title, status, priority, created_at)
+<span class="sql-kw">VALUES</span>
+    (<span class="sql-str">'Learn SQL'</span>,       <span class="sql-str">'pending'</span>, <span class="sql-str">'high'</span>,   <span class="sql-str">'2024-01-15'</span>),
+    (<span class="sql-str">'Build project'</span>,   <span class="sql-str">'pending'</span>, <span class="sql-str">'medium'</span>, <span class="sql-str">'2024-01-16'</span>),
+    (<span class="sql-str">'Write tests'</span>,     <span class="sql-str">'pending'</span>, <span class="sql-str">'low'</span>,    <span class="sql-str">'2024-01-17'</span>);</pre>
+<h2>7.2 UPDATE</h2>
+<p>Change values in existing rows:</p>
+<pre><span class="sql-kw">UPDATE</span> tasks
+<span class="sql-kw">SET</span> status = <span class="sql-str">'complete'</span>
+<span class="sql-kw">WHERE</span> id = <span class="sql-num">1</span>;</pre>
+<p>Update multiple columns at once:</p>
+<pre><span class="sql-kw">UPDATE</span> tasks
+<span class="sql-kw">SET</span> status = <span class="sql-str">'in_progress'</span>, priority = <span class="sql-str">'high'</span>
+<span class="sql-kw">WHERE</span> id = <span class="sql-num">2</span>;</pre>
+<div class="callout mistake"><div class="callout-title">⚠️ ALWAYS include WHERE with UPDATE</div>
+<div class="callout-body"><p><code>UPDATE tasks SET status = 'complete'</code> — no WHERE — updates <strong>every single row</strong>. This is one of the most common and painful mistakes in SQL. Always check your WHERE clause before running an UPDATE.</p></div></div>
+<h2>7.3 DELETE</h2>
+<pre><span class="sql-kw">DELETE FROM</span> tasks <span class="sql-kw">WHERE</span> id = <span class="sql-num">3</span>;</pre>
+<p>Delete all completed tasks:</p>
+<pre><span class="sql-kw">DELETE FROM</span> tasks <span class="sql-kw">WHERE</span> status = <span class="sql-str">'complete'</span>;</pre>
+<div class="callout mistake"><div class="callout-title">⚠️ ALWAYS include WHERE with DELETE</div>
+<div class="callout-body"><p><code>DELETE FROM tasks</code> — no WHERE — deletes every row in the table. The table structure remains, but all data is gone. No undo. This is the SQL equivalent of <code>rm -rf</code>.</p></div></div>
+<h2>7.4 Safe Pattern — SELECT Before DELETE/UPDATE</h2>
+<p>Before running a destructive operation, run the equivalent SELECT to check what you'll affect:</p>
+<pre><span class="cm">-- Step 1: check what you're about to delete</span>
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks <span class="sql-kw">WHERE</span> status = <span class="sql-str">'complete'</span>;
+
+<span class="cm">-- Step 2: looks right? Now delete</span>
+<span class="sql-kw">DELETE FROM</span> tasks <span class="sql-kw">WHERE</span> status = <span class="sql-str">'complete'</span>;</pre>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="B">
+<div class="question-text">Q1 — What happens if you run UPDATE tasks SET priority = 'high' with no WHERE clause?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> Nothing — SQL requires WHERE on UPDATE</li>
+<li class="option" data-value="B"><span class="option-key">B</span> Every row in the table gets priority set to 'high'</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Only the first row is updated</li>
+</ul>
+<button class="reveal-btn" data-target="c7q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c7q1">Without WHERE, UPDATE affects every row. SQL doesn't require WHERE — it's up to you to include it. Always double-check before running.</div>
+</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q2 — Best practice before running a DELETE?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> Run it and hope for the best</li>
+<li class="option" data-value="B"><span class="option-key">B</span> Back up the entire database every time</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Run SELECT with the same WHERE clause first to verify the affected rows</li>
+</ul>
+<button class="reveal-btn" data-target="c7q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c7q2">SELECT first, DELETE second. The WHERE clause is identical — if SELECT returns what you expect, the DELETE will affect exactly those rows. Simple and safe.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint</div><div class="callout-body">
+<p>Write three queries: (1) Insert a new task with title "Migrate to SQLite", high priority. (2) Mark it as in_progress. (3) Delete all tasks where status is 'complete' and priority is 'low'. Use SELECT first for query 3.</p>
+<textarea class="checkpoint-input" style="min-height:140px;" placeholder="-- 1. Insert&#10;&#10;-- 2. Update&#10;&#10;-- 3a. SELECT to verify&#10;&#10;-- 3b. DELETE"></textarea>
+<button class="reveal-btn" data-target="c7cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c7cp"><pre><span class="cm">-- 1. Insert</span>
+<span class="sql-kw">INSERT INTO</span> tasks (title, priority, status, created_at)
+<span class="sql-kw">VALUES</span> (<span class="sql-str">'Migrate to SQLite'</span>, <span class="sql-str">'high'</span>, <span class="sql-str">'pending'</span>, <span class="sql-str">'2024-01-20'</span>);
+
+<span class="cm">-- 2. Update</span>
+<span class="sql-kw">UPDATE</span> tasks <span class="sql-kw">SET</span> status = <span class="sql-str">'in_progress'</span>
+<span class="sql-kw">WHERE</span> title = <span class="sql-str">'Migrate to SQLite'</span>;
+
+<span class="cm">-- 3a. Verify</span>
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE</span> status = <span class="sql-str">'complete'</span> <span class="sql-kw">AND</span> priority = <span class="sql-str">'low'</span>;
+
+<span class="cm">-- 3b. Delete</span>
+<span class="sql-kw">DELETE FROM</span> tasks
+<span class="sql-kw">WHERE</span> status = <span class="sql-str">'complete'</span> <span class="sql-kw">AND</span> priority = <span class="sql-str">'low'</span>;</pre></div>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-06.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 6: Creating & Modifying Tables</span></a><a class="nav-btn next" href="chapter-08.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 8: Joins</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

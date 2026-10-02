@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 11 -- CRUD with sqlite3 | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link active" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 11 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 11</div>
+    <h1 class="chapter-title">CRUD with sqlite3</h1>
+    <p class="chapter-lead">Create, Read, Update, Delete -- all from Python. The SQL from Part I becomes real working code.</p>
+    
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul>
+<li>INSERT from Python</li><li>SELECT and fetching rows as Python data</li>
+<li>fetchall, fetchone, row factories</li><li>UPDATE and DELETE from Python</li>
+</ul></div>
+<h2>11.1 INSERT</h2>
+<pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">def</span> <span class="fn">add_task</span>(title, priority=<span class="str">"medium"</span>):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"INSERT INTO tasks (title, priority, created_at) VALUES (?, ?, ?)"</span>,
+            (title, priority, datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>())
+        )
+        <span class="kw">return</span> cur.lastrowid
+
+task_id = <span class="fn">add_task</span>(<span class="str">"Learn sqlite3"</span>, <span class="str">"high"</span>)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Created task #{task_id}"</span>)</pre>
+<h2>11.2 SELECT</h2>
+<pre><span class="kw">def</span> <span class="fn">get_all_tasks</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks ORDER BY created_at DESC"</span>)
+        <span class="kw">return</span> cur.<span class="fn">fetchall</span>()   <span class="cm"># list of tuples</span>
+
+<span class="kw">for</span> row <span class="kw">in</span> <span class="fn">get_all_tasks</span>():
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"[{row[0]}] {row[1]} -- {row[2]}"</span>)</pre>
+<h2>11.3 Row Factories -- Dicts Instead of Tuples</h2>
+<pre><span class="kw">def</span> <span class="fn">get_all_tasks</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks"</span>)
+        <span class="kw">return</span> [<span class="fn">dict</span>(row) <span class="kw">for</span> row <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]
+
+<span class="kw">for</span> task <span class="kw">in</span> <span class="fn">get_all_tasks</span>():
+    <span class="fn">print</span>(task[<span class="str">"title"</span>], task[<span class="str">"status"</span>])   <span class="cm"># by name, not index</span></pre>
+<h2>11.4 UPDATE and DELETE</h2>
+<pre><span class="kw">def</span> <span class="fn">complete_task</span>(task_id):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(<span class="str">"UPDATE tasks SET status=? WHERE id=?"</span>, (<span class="str">"complete"</span>, task_id))
+
+<span class="kw">def</span> <span class="fn">delete_task</span>(task_id):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(<span class="str">"DELETE FROM tasks WHERE id=?"</span>, (task_id,))
+<span class="cm"># note: (task_id,) -- trailing comma makes it a tuple</span></pre>
+<div class="callout warning"><div class="callout-title">Single-value tuples need a trailing comma</div>
+<div class="callout-body"><p><code>(task_id)</code> is just parentheses. <code>(task_id,)</code> is a one-element tuple. sqlite3 requires a sequence even for one parameter.</p></div></div>
+<div class="exercise-block"><div class="exercise-title">Exercises</div>
+<div class="question" data-correct="B"><div class="question-text">Q1 -- fetchone() returns what when no rows match?</div>
+<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Empty list []</li>
+<li class="option" data-value="B"><span class="option-key">B</span> None</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Raises an exception</li></ul>
+<button class="reveal-btn" data-target="c11q1" data-show-label="Show" data-hide-label="Hide">Show</button>
+<div class="reveal-content" id="c11q1">fetchone() returns None on no rows. Always check: if row: ...</div>
+</div>
+<div class="question" data-correct="C"><div class="question-text">Q2 -- What does conn.row_factory = sqlite3.Row do?</div>
+<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Makes queries faster</li>
+<li class="option" data-value="B"><span class="option-key">B</span> Auto-converts to JSON</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Lets you access columns by name instead of index</li></ul>
+<button class="reveal-btn" data-target="c11q2" data-show-label="Show" data-hide-label="Hide">Show</button>
+<div class="reveal-content" id="c11q2">Row objects support name access. dict(row) converts to a plain Python dict. Far cleaner than row[0], row[1].</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">Mini-Project: Task Manager Core</div><div class="callout-body">
+<p>Write four functions: add_task(title, priority), get_tasks(status=None), update_status(task_id, status), delete_task(task_id). This is the storage layer for your task manager migration.</p>
+<textarea class="checkpoint-input" style="min-height:140px;" placeholder="import sqlite3&#10;from datetime import datetime&#10;DB = 'tasks.db'&#10;&#10;def add_task(title, priority='medium'):&#10;    ..."></textarea>
+</div></div>
+
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-10.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 10: Intro to sqlite3</span></a><a class="nav-btn next" href="chapter-12.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 12: Parameterised Queries</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

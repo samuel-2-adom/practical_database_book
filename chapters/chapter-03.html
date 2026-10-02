@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 3 — Your First SQL Queries | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link active" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 3 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 3</div>
+    <h1 class="chapter-title">Your First SQL Queries</h1>
+    <p class="chapter-lead">Time to write actual SQL. This chapter covers SELECT — the most important statement in SQL, and the one you'll use more than all others combined.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>The SELECT statement — retrieving data from a table</li>
+<li>Selecting specific columns vs all columns</li>
+<li>Column aliases with AS</li>
+<li>Removing duplicates with DISTINCT</li>
+</ul></div>
+<h2>3.1 The SELECT Statement</h2>
+<p>SELECT is how you ask the database "give me some data". At its simplest:</p>
+<pre><span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> contacts;</pre>
+<p>The <code>*</code> means "all columns". This returns every column of every row in the contacts table. Think of it as "show me everything".</p>
+<div class="callout concept"><div class="callout-title">🔵 Basic SELECT structure</div>
+<div class="callout-body"><pre style="margin:0;background:none;border:none;padding:0;font-size:13px;"><span class="sql-kw">SELECT</span> column1, column2
+<span class="sql-kw">FROM</span>   table_name;</pre></div></div>
+<h2>3.2 Selecting Specific Columns</h2>
+<p>Almost always, you only want some columns — not all of them. Name the ones you want:</p>
+<pre><span class="sql-kw">SELECT</span> name, email
+<span class="sql-kw">FROM</span> contacts;</pre>
+<div class="diagram">Result:
+┌──────────┬──────────────────────┐
+│ name     │ email                │
+├──────────┼──────────────────────┤
+│ Samuel   │ samuel@email.com     │
+│ Kwame    │ kwame@email.com      │
+│ Abena    │ abena@email.com      │
+└──────────┴──────────────────────┘</div>
+<div class="callout tip"><div class="callout-title">💡 Avoid SELECT * in real code</div>
+<div class="callout-body"><p>SELECT * is fine for exploring data interactively. In real programs, always name your columns explicitly. It makes the code readable, prevents surprises when the table structure changes, and is faster because the database doesn't send columns you don't need.</p></div></div>
+<h2>3.3 Column Aliases with AS</h2>
+<p>Rename a column in the result using AS:</p>
+<pre><span class="sql-kw">SELECT</span>
+    name        <span class="sql-kw">AS</span> full_name,
+    email       <span class="sql-kw">AS</span> email_address
+<span class="sql-kw">FROM</span> contacts;</pre>
+<p>The alias only affects the output — the actual column name in the table is unchanged.</p>
+<h2>3.4 DISTINCT — Remove Duplicates</h2>
+<p>If a column has repeated values and you only want unique ones:</p>
+<pre><span class="sql-kw">SELECT DISTINCT</span> city
+<span class="sql-kw">FROM</span> contacts;</pre>
+<div class="diagram">Without DISTINCT:   With DISTINCT:
+Accra               Accra
+Kumasi              Kumasi
+Accra               Tamale
+Tamale
+Accra</div>
+<h2>3.5 SQL Style</h2>
+<p>SQL keywords are case-insensitive — <code>select</code> works the same as <code>SELECT</code>. Convention is to write keywords in UPPERCASE and table/column names in lowercase. This book follows that convention.</p>
+<pre><span class="cm">-- Good style</span>
+<span class="sql-kw">SELECT</span> name, email
+<span class="sql-kw">FROM</span> contacts;
+
+<span class="cm">-- Also works, but harder to read</span>
+select name, email from contacts;</pre>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="B">
+<div class="question-text">Q1 — What does SELECT * mean?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> Select the first row only</li>
+<li class="option" data-value="B"><span class="option-key">B</span> Select all columns</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Select all rows but no columns</li>
+</ul>
+<button class="reveal-btn" data-target="c3q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c3q1">The * is a wildcard meaning "all columns". <code>SELECT * FROM table</code> returns every column of every row. Fine for exploration, but name your columns explicitly in real code.</div>
+</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q2 — You want to list all unique cities in a contacts table. Which query?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> SELECT city FROM contacts;</li>
+<li class="option" data-value="B"><span class="option-key">B</span> SELECT UNIQUE city FROM contacts;</li>
+<li class="option" data-value="C"><span class="option-key">C</span> SELECT DISTINCT city FROM contacts;</li>
+</ul>
+<button class="reveal-btn" data-target="c3q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c3q2">DISTINCT removes duplicate values from results. UNIQUE is not a valid keyword here — it's used in table creation, not SELECT queries.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint</div><div class="callout-body">
+<p>Write a query that returns only the title and status columns from a tasks table, with no duplicate statuses shown in a second query.</p>
+<textarea class="checkpoint-input" placeholder="-- query 1: title and status&#10;SELECT ...&#10;&#10;-- query 2: unique statuses only&#10;SELECT ..."></textarea>
+<button class="reveal-btn" data-target="c3cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c3cp"><pre><span class="sql-kw">SELECT</span> title, status <span class="sql-kw">FROM</span> tasks;
+
+<span class="sql-kw">SELECT DISTINCT</span> status <span class="sql-kw">FROM</span> tasks;</pre></div>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-02.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 2: Tables, Rows & Columns</span></a><a class="nav-btn next" href="chapter-04.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 4: Filtering with WHERE</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

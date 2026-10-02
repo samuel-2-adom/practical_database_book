@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project 2 -- Expense Tracker | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link active" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Project 2 of 3</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part IV -- Projects -- Project 2</div>
+    <h1 class="chapter-title">Expense Tracker</h1>
+    <p class="chapter-lead">A CLI expense tracker with categories and spending summaries. Demonstrates multi-table design, GROUP BY, and SUM in a real program.</p>
+<div class="callout concept"><div class="callout-title">Project overview</div><div class="callout-body"><p>Build a CLI expense tracker with categories, totals per category, and a monthly summary. Demonstrates GROUP BY, SUM, and multi-table design in a real program.</p><p><strong>Skills used:</strong> Multiple tables &middot; GROUP BY &middot; SUM &middot; AVG &middot; date filtering &middot; formatted output</p></div></div><h2>Database Schema</h2><pre><span class="sql-kw">CREATE TABLE</span> categories (
+    id   <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    name <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL UNIQUE</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> expenses (
+    id          <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    amount      <span class="sql-type">REAL</span>    <span class="sql-kw">NOT NULL CHECK</span>(amount &gt; 0),
+    description <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>,
+    category_id <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> categories(id),
+    date        <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>
+);</pre><h2>Key Queries</h2><pre><span class="cm">-- Total spent per category</span>
+<span class="sql-kw">SELECT</span> c.name, <span class="sql-kw">SUM</span>(e.amount) <span class="sql-kw">AS</span> total
+<span class="sql-kw">FROM</span> expenses e
+<span class="sql-kw">JOIN</span> categories c <span class="sql-kw">ON</span> e.category_id = c.id
+<span class="sql-kw">GROUP BY</span> c.name
+<span class="sql-kw">ORDER BY</span> total <span class="sql-kw">DESC</span>;
+
+<span class="cm">-- Monthly summary</span>
+<span class="sql-kw">SELECT</span>
+    <span class="sql-kw">SUBSTR</span>(date, 1, 7) <span class="sql-kw">AS</span> month,
+    <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> transactions,
+    <span class="sql-kw">SUM</span>(amount) <span class="sql-kw">AS</span> total,
+    <span class="sql-kw">AVG</span>(amount) <span class="sql-kw">AS</span> avg_expense
+<span class="sql-kw">FROM</span> expenses
+<span class="sql-kw">GROUP BY</span> month
+<span class="sql-kw">ORDER BY</span> month <span class="sql-kw">DESC</span>;</pre><h2>Complete Code</h2><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> datetime <span class="kw">import</span> date
+
+DB = <span class="str">"expenses.db"</span>
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.<span class="fn">executescript</span>(<span class="str">"""
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY,
+                amount REAL NOT NULL CHECK(amount > 0),
+                description TEXT NOT NULL,
+                category_id INTEGER REFERENCES categories(id),
+                date TEXT NOT NULL);
+            INSERT OR IGNORE INTO categories (name)
+            VALUES ('Food'),('Transport'),('Utilities'),('Entertainment'),('Other');
+        """</span>)
+
+<span class="kw">def</span> <span class="fn">add_expense</span>(amount, description, category_name):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        cat = conn.<span class="fn">execute</span>(
+            <span class="str">"SELECT id FROM categories WHERE name=?"</span>, (category_name,)
+        ).<span class="fn">fetchone</span>()
+        <span class="kw">if not</span> cat:
+            <span class="fn">print</span>(<span class="str">f"Category {category_name!r} not found."</span>); <span class="kw">return</span>
+        conn.<span class="fn">execute</span>(
+            <span class="str">"INSERT INTO expenses (amount,description,category_id,date) VALUES (?,?,?,?)"</span>,
+            (amount, description, cat[<span class="str">"id"</span>], date.<span class="fn">today</span>().<span class="fn">isoformat</span>())
+        )
+
+<span class="kw">def</span> <span class="fn">summary_by_category</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        rows = conn.<span class="fn">execute</span>(<span class="str">"""
+            SELECT c.name, SUM(e.amount) AS total, COUNT(*) AS count
+            FROM expenses e JOIN categories c ON e.category_id=c.id
+            GROUP BY c.name ORDER BY total DESC
+        """</span>).<span class="fn">fetchall</span>()
+    <span class="fn">print</span>(<span class="str">"\nSpending by category"</span>)
+    <span class="fn">print</span>(<span class="str">"-" * 35</span>)
+    <span class="kw">for</span> r <span class="kw">in</span> rows:
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{r['name']:<15} GHS {r['total']:>8.2f}  ({r['count']} items)"</span>)
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    <span class="fn">init_db</span>()
+    <span class="kw">while</span> <span class="kw">True</span>:
+        <span class="fn">print</span>(<span class="str">"\n1. Add expense  2. Summary  3. Quit"</span>)
+        c = <span class="fn">input</span>(<span class="str">"Choice: "</span>).strip()
+        <span class="kw">if</span> c == <span class="str">"1"</span>:
+            amt  = <span class="fn">float</span>(<span class="fn">input</span>(<span class="str">"Amount (GHS): "</span>))
+            desc = <span class="fn">input</span>(<span class="str">"Description: "</span>)
+            cat  = <span class="fn">input</span>(<span class="str">"Category (Food/Transport/Utilities/Entertainment/Other): "</span>)
+            <span class="fn">add_expense</span>(amt, desc, cat)
+            <span class="fn">print</span>(<span class="str">"Added."</span>)
+        <span class="kw">elif</span> c == <span class="str">"2"</span>: <span class="fn">summary_by_category</span>()
+        <span class="kw">elif</span> c == <span class="str">"3"</span>: <span class="kw">break</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>: <span class="fn">main</span>()</pre><h2>Extensions to try</h2><ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font-family:var(--font-sans);font-size:15px;"><li style="padding-left:16px;color:var(--text-muted);">&#183; Add a monthly report -- filter by SUBSTR(date,1,7)</li><li style="padding-left:16px;color:var(--text-muted);">&#183; Add budget limits per category and warn when exceeded</li><li style="padding-left:16px;color:var(--text-muted);">&#183; Export to CSV for spreadsheet analysis</li><li style="padding-left:16px;color:var(--text-muted);">&#183; Migrate to PostgreSQL and add multi-user support</li></ul>
+    <div class="chapter-nav"><a class="nav-btn" href="project-01.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Project 1: CLI Contact Book</span></a><a class="nav-btn next" href="project-03.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Project 3: Notes App with Tags</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

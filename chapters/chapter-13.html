@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 13 -- Transactions and Errors | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link active" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 13 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 13</div>
+    <h1 class="chapter-title">Transactions and Errors</h1>
+    <p class="chapter-lead">What happens when something goes wrong mid-operation? Transactions keep your data consistent. This chapter closes out Part II.</p>
+    
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul>
+<li>What a transaction is and why it matters</li>
+<li>COMMIT and ROLLBACK</li>
+<li>How the context manager handles transactions automatically</li>
+<li>Handling database errors in Python</li>
+</ul></div>
+<h2>13.1 What Is a Transaction?</h2>
+<p>A transaction is a group of SQL statements that either all succeed or all fail together. The classic example is a bank transfer:</p>
+<div class="diagram">Transfer GHS 500 from Account A to Account B:
+
+Step 1: Deduct 500 from Account A
+Step 2: Add 500 to Account B
+
+If step 2 fails, step 1 must be reversed.
+Without a transaction, you lose GHS 500 -- deducted but never added.</div>
+<p>Transactions guarantee this cannot happen. Either both steps complete (COMMIT) or neither does (ROLLBACK).</p>
+<h2>13.2 COMMIT and ROLLBACK</h2>
+<pre><span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"bank.db"</span>) <span class="kw">as</span> conn:
+    <span class="kw">try</span>:
+        conn.<span class="fn">execute</span>(<span class="str">"UPDATE accounts SET balance = balance - 500 WHERE id = 1"</span>)
+        conn.<span class="fn">execute</span>(<span class="str">"UPDATE accounts SET balance = balance + 500 WHERE id = 2"</span>)
+        conn.<span class="fn">commit</span>()    <span class="cm"># both succeeded -- save changes</span>
+    <span class="kw">except</span> <span class="cls">Exception</span>:
+        conn.<span class="fn">rollback</span>()  <span class="cm"># something failed -- undo everything</span>
+        <span class="kw">raise</span></pre>
+<div class="callout tip"><div class="callout-title">The context manager handles this automatically</div>
+<div class="callout-body"><p>When you use <code>with sqlite3.connect() as conn</code>, Python commits on a clean exit and rolls back if an exception occurs. You only need explicit commit/rollback for complex multi-step operations.</p></div></div>
+<h2>13.3 Handling Database Errors</h2>
+<pre><span class="kw">import</span> sqlite3
+
+<span class="kw">def</span> <span class="fn">add_user</span>(username, email):
+    <span class="kw">try</span>:
+        <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"users.db"</span>) <span class="kw">as</span> conn:
+            conn.<span class="fn">execute</span>(
+                <span class="str">"INSERT INTO users (username, email) VALUES (?, ?)"</span>,
+                (username, email)
+            )
+        <span class="kw">return</span> <span class="kw">True</span>
+    <span class="kw">except</span> sqlite3.<span class="cls">IntegrityError</span>:
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Username or email already exists"</span>)
+        <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">except</span> sqlite3.<span class="cls">OperationalError</span> <span class="kw">as</span> e:
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Database error: {e}"</span>)
+        <span class="kw">return</span> <span class="kw">False</span></pre>
+<h2>13.4 Common sqlite3 Exceptions</h2>
+<div class="diagram">sqlite3.Error                 (base class for all)
+  sqlite3.IntegrityError      UNIQUE or NOT NULL violated
+  sqlite3.OperationalError    table missing, SQL syntax error
+  sqlite3.ProgrammingError    wrong number of parameters</div>
+<div class="exercise-block"><div class="exercise-title">Exercises</div>
+<div class="question" data-correct="C"><div class="question-text">Q1 -- What happens to a transaction when an exception occurs inside a with...connect() block?</div>
+<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Changes are saved anyway</li>
+<li class="option" data-value="B"><span class="option-key">B</span> The database file is deleted</li>
+<li class="option" data-value="C"><span class="option-key">C</span> The transaction is rolled back automatically</li></ul>
+<button class="reveal-btn" data-target="c13q1" data-show-label="Show" data-hide-label="Hide">Show</button>
+<div class="reveal-content" id="c13q1">The context manager rolls back on exception. Any changes made during the block are undone, leaving the database in its previous state.</div>
+</div>
+<div class="question" data-correct="A"><div class="question-text">Q2 -- You try to insert a username that already exists (UNIQUE constraint). Which exception is raised?</div>
+<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> sqlite3.IntegrityError</li>
+<li class="option" data-value="B"><span class="option-key">B</span> sqlite3.OperationalError</li>
+<li class="option" data-value="C"><span class="option-key">C</span> ValueError</li></ul>
+<button class="reveal-btn" data-target="c13q2" data-show-label="Show" data-hide-label="Hide">Show</button>
+<div class="reveal-content" id="c13q2">IntegrityError is raised when a constraint is violated -- UNIQUE, NOT NULL, FOREIGN KEY. OperationalError covers structural issues like missing tables or syntax errors.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">Part II Complete</div><div class="callout-body">
+<p>You can now build a complete Python program backed by SQLite. Write a transfer(from_id, to_id, amount) function that moves money between two accounts atomically -- both updates succeed or neither does.</p>
+<textarea class="checkpoint-input" style="min-height:120px;" placeholder="def transfer(from_id, to_id, amount):&#10;    try:&#10;        with sqlite3.connect('bank.db') as conn:&#10;            ..."></textarea>
+</div></div>
+<div class="callout concept"><div class="callout-title">Part II complete</div><div class="callout-body">
+<p>You can now build Python programs backed by SQLite: create databases, insert and query data safely, handle errors, and keep data consistent with transactions. Part III moves to PostgreSQL -- a real server you can run in production.</p>
+</div></div>
+
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-12.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 12: Parameterised Queries</span></a><a class="nav-btn next" href="chapter-14.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 14: Intro to PostgreSQL</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

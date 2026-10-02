@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 8 — Joins | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link active" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 8 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 8</div>
+    <h1 class="chapter-title">Joins</h1>
+    <p class="chapter-lead">Joins are where relational databases show their real power. This is how you connect data across multiple tables — like your notes and their tags.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>Why multiple tables exist and how they relate</li>
+<li>Foreign keys — the link between tables</li>
+<li>INNER JOIN — rows that match in both tables</li>
+<li>LEFT JOIN — all rows from one table, matched or not</li>
+<li>Junction tables for many-to-many relationships</li>
+</ul></div>
+<h2>8.1 Why Multiple Tables?</h2>
+<p>Imagine storing tasks with their assigned user:</p>
+<div class="diagram">Bad — repeated data:
+tasks
+┌────┬──────────────────┬────────────┬──────────────────┐
+│ id │ title            │ user_name  │ user_email       │
+├────┼──────────────────┼────────────┼──────────────────┤
+│  1 │ Learn SQL        │ Samuel     │ samuel@email.com │
+│  2 │ Build project    │ Samuel     │ samuel@email.com │
+│  3 │ Write tests      │ Kwame      │ kwame@email.com  │
+└────┴──────────────────┴────────────┴──────────────────┘
+Problem: if Samuel changes his email, you update multiple rows.
+Problem: storing the same data in multiple places wastes space and causes inconsistency.</div>
+<p>The solution is two tables, with a <strong>foreign key</strong> linking them:</p>
+<div class="diagram">users                    tasks
+┌────┬────────┬──────────────────┐    ┌────┬──────────────┬─────────┐
+│ id │ name   │ email            │    │ id │ title        │ user_id │
+├────┼────────┼──────────────────┤    ├────┼──────────────┼─────────┤
+│  1 │ Samuel │ samuel@email.com │    │  1 │ Learn SQL    │    1    │
+│  2 │ Kwame  │ kwame@email.com  │    │  2 │ Build project│    1    │
+└────┴────────┴──────────────────┘    │  3 │ Write tests  │    2    │
+                                      └────┴──────────────┴─────────┘
+tasks.user_id → users.id (foreign key)</div>
+<h2>8.2 INNER JOIN</h2>
+<p>Returns rows where there's a match in both tables:</p>
+<pre><span class="sql-kw">SELECT</span> tasks.title, users.name
+<span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">INNER JOIN</span> users <span class="sql-kw">ON</span> tasks.user_id = users.id;</pre>
+<div class="diagram">Result:
+┌──────────────┬────────┐
+│ title        │ name   │
+├──────────────┼────────┤
+│ Learn SQL    │ Samuel │
+│ Build project│ Samuel │
+│ Write tests  │ Kwame  │
+└──────────────┴────────┘</div>
+<p>Use table aliases to keep queries short:</p>
+<pre><span class="sql-kw">SELECT</span> t.title, u.name
+<span class="sql-kw">FROM</span> tasks t
+<span class="sql-kw">JOIN</span> users u <span class="sql-kw">ON</span> t.user_id = u.id;
+<span class="cm">-- INNER JOIN and JOIN are identical</span></pre>
+<h2>8.3 LEFT JOIN</h2>
+<p>Returns all rows from the left table, plus matched rows from the right. Unmatched right-side columns are NULL:</p>
+<pre><span class="sql-kw">SELECT</span> u.name, t.title
+<span class="sql-kw">FROM</span> users u
+<span class="sql-kw">LEFT JOIN</span> tasks t <span class="sql-kw">ON</span> t.user_id = u.id;</pre>
+<div class="diagram">Result — includes users with no tasks:
+┌────────┬──────────────┐
+│ name   │ title        │
+├────────┼──────────────┤
+│ Samuel │ Learn SQL    │
+│ Samuel │ Build project│
+│ Kwame  │ Write tests  │
+│ Abena  │ NULL         │  ← Abena has no tasks
+└────┴──────────────┘</div>
+<h2>8.4 Many-to-Many — Junction Tables</h2>
+<p>A note can have many tags. A tag can belong to many notes. This is a many-to-many relationship — exactly what you built in your notes manager with JSON arrays.</p>
+<p>In SQL, you solve this with a <strong>junction table</strong>:</p>
+<pre><span class="sql-kw">CREATE TABLE</span> notes (
+    id    <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    title <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> tags (
+    id   <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY</span>,
+    name <span class="sql-type">TEXT</span>    <span class="sql-kw">NOT NULL UNIQUE</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> note_tags (    <span class="cm">-- junction table</span>
+    note_id <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> notes(id),
+    tag_id  <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> tags(id),
+    <span class="sql-kw">PRIMARY KEY</span> (note_id, tag_id)
+);</pre>
+<p>Now query all notes with the "python" tag:</p>
+<pre><span class="sql-kw">SELECT</span> n.title
+<span class="sql-kw">FROM</span> notes n
+<span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> n.id = nt.note_id
+<span class="sql-kw">JOIN</span> tags t       <span class="sql-kw">ON</span> nt.tag_id = t.id
+<span class="sql-kw">WHERE</span> t.name = <span class="sql-str">'python'</span>;</pre>
+<p>That filtering function you wrote in Python — 15+ lines of JSON looping — is now one SQL query.</p>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="B">
+<div class="question-text">Q1 — What's the difference between INNER JOIN and LEFT JOIN?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> INNER JOIN is faster; LEFT JOIN is more accurate</li>
+<li class="option" data-value="B"><span class="option-key">B</span> INNER JOIN only returns rows with matches in both tables; LEFT JOIN returns all left rows even without a match</li>
+<li class="option" data-value="C"><span class="option-key">C</span> They are identical</li>
+</ul>
+<button class="reveal-btn" data-target="c8q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c8q1">INNER JOIN = intersection. Only rows that match on both sides. LEFT JOIN = all left rows, matched right rows where they exist, NULL where they don't. Use LEFT JOIN when you want "all X, even those with no Y".</div>
+</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q2 — Why does a many-to-many relationship need a junction table?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> It doesn't — you can store a list in one column</li>
+<li class="option" data-value="B"><span class="option-key">B</span> To make queries faster</li>
+<li class="option" data-value="C"><span class="option-key">C</span> Because a column can only store one value — a junction table stores one row per relationship pair</li>
+</ul>
+<button class="reveal-btn" data-target="c8q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c8q2">Each cell in a relational database holds one value. To represent "note 1 has tags python, learning, reference" you need three rows in the junction table: (1, python_id), (1, learning_id), (1, reference_id). This is exactly what you were mimicking with JSON arrays.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint</div><div class="callout-body">
+<p>Write a query that returns the title of every note along with all its tag names. Notes with no tags should still appear (with NULL for the tag name).</p>
+<textarea class="checkpoint-input" placeholder="SELECT ..."></textarea>
+<button class="reveal-btn" data-target="c8cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c8cp"><pre><span class="sql-kw">SELECT</span> n.title, t.name <span class="sql-kw">AS</span> tag
+<span class="sql-kw">FROM</span> notes n
+<span class="sql-kw">LEFT JOIN</span> note_tags nt <span class="sql-kw">ON</span> n.id = nt.note_id
+<span class="sql-kw">LEFT JOIN</span> tags t       <span class="sql-kw">ON</span> nt.tag_id = t.id
+<span class="sql-kw">ORDER BY</span> n.title, t.name;</pre></div>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-07.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 7: Inserting, Updating & Deleting</span></a><a class="nav-btn next" href="chapter-09.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 9: Aggregates & Grouping</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

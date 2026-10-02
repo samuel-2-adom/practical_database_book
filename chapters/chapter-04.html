@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 4 — Filtering with WHERE | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link active" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 4 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 4</div>
+    <h1 class="chapter-title">Filtering with WHERE</h1>
+    <p class="chapter-lead">SELECT returns everything. WHERE narrows it down. This is where SQL starts to feel powerful.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>The WHERE clause — filtering rows by condition</li>
+<li>Comparison operators: =, !=, &lt;, &gt;, &lt;=, &gt;=</li>
+<li>Combining conditions: AND, OR, NOT</li>
+<li>Pattern matching with LIKE</li>
+<li>Checking for NULL with IS NULL</li>
+<li>Matching a list with IN</li>
+</ul></div>
+<h2>4.1 The WHERE Clause</h2>
+<p>WHERE filters which rows are returned. Only rows where the condition is TRUE make it into the result:</p>
+<pre><span class="sql-kw">SELECT</span> name, email
+<span class="sql-kw">FROM</span> contacts
+<span class="sql-kw">WHERE</span> city = <span class="sql-str">'Accra'</span>;</pre>
+<p style="color:var(--text-muted);font-style:italic;font-size:15px;margin-top:-10px;">"Give me name and email for contacts whose city is Accra."</p>
+<h2>4.2 Comparison Operators</h2>
+<pre><span class="sql-kw">WHERE</span> age = <span class="sql-num">25</span>          <span class="cm">-- equals</span>
+<span class="sql-kw">WHERE</span> age != <span class="sql-num">25</span>         <span class="cm">-- not equal (also: &lt;&gt;)</span>
+<span class="sql-kw">WHERE</span> age &gt; <span class="sql-num">18</span>          <span class="cm">-- greater than</span>
+<span class="sql-kw">WHERE</span> age &lt; <span class="sql-num">65</span>          <span class="cm">-- less than</span>
+<span class="sql-kw">WHERE</span> age &gt;= <span class="sql-num">18</span>         <span class="cm">-- greater than or equal</span>
+<span class="sql-kw">WHERE</span> age <span class="sql-kw">BETWEEN</span> <span class="sql-num">18</span> <span class="sql-kw">AND</span> <span class="sql-num">65</span>  <span class="cm">-- inclusive range</span></pre>
+<h2>4.3 AND, OR, NOT</h2>
+<pre><span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE</span> status = <span class="sql-str">'pending'</span> <span class="sql-kw">AND</span> priority = <span class="sql-str">'high'</span>;
+<span class="cm">-- both conditions must be true</span>
+
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE</span> status = <span class="sql-str">'pending'</span> <span class="sql-kw">OR</span> status = <span class="sql-str">'in_progress'</span>;
+<span class="cm">-- either condition can be true</span>
+
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE NOT</span> status = <span class="sql-str">'complete'</span>;
+<span class="cm">-- condition must be false</span></pre>
+<div class="callout warning"><div class="callout-title">⚠️ Use parentheses with AND and OR together</div>
+<div class="callout-body"><p>AND has higher precedence than OR. <code>WHERE a OR b AND c</code> is read as <code>WHERE a OR (b AND c)</code> — which may not be what you meant. Always use parentheses to be explicit: <code>WHERE (a OR b) AND c</code>.</p></div></div>
+<h2>4.4 LIKE — Pattern Matching</h2>
+<pre><span class="sql-kw">WHERE</span> name <span class="sql-kw">LIKE</span> <span class="sql-str">'A%'</span>      <span class="cm">-- starts with A</span>
+<span class="sql-kw">WHERE</span> name <span class="sql-kw">LIKE</span> <span class="sql-str">'%son'</span>    <span class="cm">-- ends with "son"</span>
+<span class="sql-kw">WHERE</span> name <span class="sql-kw">LIKE</span> <span class="sql-str">'%am%'</span>    <span class="cm">-- contains "am" anywhere</span>
+<span class="sql-kw">WHERE</span> name <span class="sql-kw">LIKE</span> <span class="sql-str">'S_m'</span>     <span class="cm">-- S, any one character, then m</span></pre>
+<p><code>%</code> matches any number of characters. <code>_</code> matches exactly one character.</p>
+<h2>4.5 IN — Match a List</h2>
+<pre><span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE</span> status <span class="sql-kw">IN</span> (<span class="sql-str">'pending'</span>, <span class="sql-str">'in_progress'</span>);
+<span class="cm">-- cleaner than: WHERE status='pending' OR status='in_progress'</span></pre>
+<h2>4.6 IS NULL / IS NOT NULL</h2>
+<p>You can't use <code>= NULL</code> to check for NULL. You must use <code>IS NULL</code>:</p>
+<pre><span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> contacts <span class="sql-kw">WHERE</span> phone <span class="sql-kw">IS NULL</span>;
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> contacts <span class="sql-kw">WHERE</span> phone <span class="sql-kw">IS NOT NULL</span>;</pre>
+<div class="callout mistake"><div class="callout-title">⚠️ Common mistake — WHERE col = NULL</div>
+<div class="callout-body"><p><code>WHERE phone = NULL</code> always returns zero rows, even if NULL values exist. NULL is not equal to anything, including itself. Always use <code>IS NULL</code> or <code>IS NOT NULL</code>.</p></div></div>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q1 — Which query correctly finds all high-priority pending tasks?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> SELECT * FROM tasks WHERE status = 'pending' OR priority = 'high';</li>
+<li class="option" data-value="B"><span class="option-key">B</span> SELECT * FROM tasks WHERE status AND priority = 'pending' AND 'high';</li>
+<li class="option" data-value="C"><span class="option-key">C</span> SELECT * FROM tasks WHERE status = 'pending' AND priority = 'high';</li>
+</ul>
+<button class="reveal-btn" data-target="c4q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c4q1">Use AND when both conditions must be true. OR would return tasks that are either pending OR high priority — not necessarily both. Option B is not valid SQL syntax.</div>
+</div>
+<div class="question" data-correct="B">
+<div class="question-text">Q2 — How do you find rows where the email column has no value?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> WHERE email = NULL</li>
+<li class="option" data-value="B"><span class="option-key">B</span> WHERE email IS NULL</li>
+<li class="option" data-value="C"><span class="option-key">C</span> WHERE email = ''</li>
+</ul>
+<button class="reveal-btn" data-target="c4q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c4q2">NULL is not equal to anything — even itself. <code>= NULL</code> always evaluates to unknown (not TRUE), so it never matches. Always use IS NULL. Empty string '' is different — it's a value, just an empty one.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint</div><div class="callout-body">
+<p>Write a query that finds all notes containing the word "python" in the title, that are not archived, and have at least one tag (tags_count > 0).</p>
+<textarea class="checkpoint-input" placeholder="SELECT ..."></textarea>
+<button class="reveal-btn" data-target="c4cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c4cp"><pre><span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> notes
+<span class="sql-kw">WHERE</span> title <span class="sql-kw">LIKE</span> <span class="sql-str">'%python%'</span>
+  <span class="sql-kw">AND</span> archived = <span class="sql-num">0</span>
+  <span class="sql-kw">AND</span> tags_count &gt; <span class="sql-num">0</span>;</pre></div>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-03.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 3: Your First SQL Queries</span></a><a class="nav-btn next" href="chapter-05.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 5: Sorting & Limiting</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 5 — Sorting & Limiting | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link active" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 5 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 5</div>
+    <h1 class="chapter-title">Sorting & Limiting</h1>
+    <p class="chapter-lead">Control the order and quantity of results. Two short keywords — ORDER BY and LIMIT — that you'll use in almost every real query.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>Sorting results with ORDER BY</li>
+<li>Ascending vs descending order</li>
+<li>Sorting by multiple columns</li>
+<li>Limiting results with LIMIT</li>
+<li>Skipping rows with OFFSET (pagination)</li>
+</ul></div>
+<h2>5.1 ORDER BY</h2>
+<p>Without ORDER BY, the database returns rows in no guaranteed order. Use ORDER BY to sort:</p>
+<pre><span class="sql-kw">SELECT</span> name, age <span class="sql-kw">FROM</span> contacts
+<span class="sql-kw">ORDER BY</span> age;</pre>
+<p>Default is ascending (smallest first). Add DESC for descending:</p>
+<pre><span class="sql-kw">SELECT</span> name, age <span class="sql-kw">FROM</span> contacts
+<span class="sql-kw">ORDER BY</span> age <span class="sql-kw">DESC</span>;    <span class="cm">-- oldest first</span>
+
+<span class="sql-kw">SELECT</span> title <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">ORDER BY</span> title <span class="sql-kw">ASC</span>;    <span class="cm">-- alphabetical (ASC is default, can omit)</span></pre>
+<h2>5.2 Sorting by Multiple Columns</h2>
+<p>Sort by one column first, then break ties with another:</p>
+<pre><span class="sql-kw">SELECT</span> name, city, age <span class="sql-kw">FROM</span> contacts
+<span class="sql-kw">ORDER BY</span> city <span class="sql-kw">ASC</span>, age <span class="sql-kw">DESC</span>;
+<span class="cm">-- sort by city A-Z, then within each city oldest first</span></pre>
+<h2>5.3 LIMIT</h2>
+<p>Return only the first N rows:</p>
+<pre><span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">ORDER BY</span> created_at <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">5</span>;    <span class="cm">-- most recent 5 tasks</span></pre>
+<div class="callout tip"><div class="callout-title">💡 Always ORDER BY before LIMIT</div>
+<div class="callout-body"><p>LIMIT without ORDER BY returns an arbitrary N rows — whichever the database happens to find first. Always sort first, then limit, to get predictable results like "top 5 newest" or "3 highest priority".</p></div></div>
+<h2>5.4 OFFSET — Pagination</h2>
+<p>Skip N rows before returning results. Combine with LIMIT for pagination:</p>
+<pre><span class="cm">-- Page 1: rows 1-10</span>
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks <span class="sql-kw">ORDER BY</span> id <span class="sql-kw">LIMIT</span> <span class="sql-num">10</span> <span class="sql-kw">OFFSET</span> <span class="sql-num">0</span>;
+
+<span class="cm">-- Page 2: rows 11-20</span>
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks <span class="sql-kw">ORDER BY</span> id <span class="sql-kw">LIMIT</span> <span class="sql-num">10</span> <span class="sql-kw">OFFSET</span> <span class="sql-num">10</span>;
+
+<span class="cm">-- Page 3: rows 21-30</span>
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks <span class="sql-kw">ORDER BY</span> id <span class="sql-kw">LIMIT</span> <span class="sql-num">10</span> <span class="sql-kw">OFFSET</span> <span class="sql-num">20</span>;</pre>
+<p>Formula: <code>OFFSET = (page_number - 1) * page_size</code></p>
+<h2>5.5 Putting It Together</h2>
+<pre><span class="cm">-- Top 3 high-priority pending tasks, most recent first</span>
+<span class="sql-kw">SELECT</span> title, created_at
+<span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE</span> status = <span class="sql-str">'pending'</span> <span class="sql-kw">AND</span> priority = <span class="sql-str">'high'</span>
+<span class="sql-kw">ORDER BY</span> created_at <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">3</span>;</pre>
+<p>Notice the order: SELECT → FROM → WHERE → ORDER BY → LIMIT. SQL clauses must appear in this order.</p>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="A">
+<div class="question-text">Q1 — You want the 5 most expensive products. Which query is correct?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> SELECT * FROM products ORDER BY price DESC LIMIT 5;</li>
+<li class="option" data-value="B"><span class="option-key">B</span> SELECT * FROM products LIMIT 5 ORDER BY price DESC;</li>
+<li class="option" data-value="C"><span class="option-key">C</span> SELECT TOP 5 * FROM products ORDER BY price DESC;</li>
+</ul>
+<button class="reveal-btn" data-target="c5q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c5q1">ORDER BY must come before LIMIT in the clause order. TOP is a SQL Server syntax — not used in SQLite or PostgreSQL. Always: ORDER BY first, then LIMIT.</div>
+</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q2 — Showing 10 results per page. What OFFSET shows page 4?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> OFFSET 4</li>
+<li class="option" data-value="B"><span class="option-key">B</span> OFFSET 40</li>
+<li class="option" data-value="C"><span class="option-key">C</span> OFFSET 30</li>
+</ul>
+<button class="reveal-btn" data-target="c5q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c5q2">Formula: (page - 1) × page_size = (4 - 1) × 10 = 30. Skip the first 30 rows to get rows 31-40 (page 4).</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint</div><div class="callout-body">
+<p>Write a query that returns the 10 most recently created notes, showing only the title and created_at columns, skipping the first 20 (page 3 of 10-per-page results).</p>
+<textarea class="checkpoint-input" placeholder="SELECT ..."></textarea>
+<button class="reveal-btn" data-target="c5cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c5cp"><pre><span class="sql-kw">SELECT</span> title, created_at
+<span class="sql-kw">FROM</span> notes
+<span class="sql-kw">ORDER BY</span> created_at <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">10</span> <span class="sql-kw">OFFSET</span> <span class="sql-num">20</span>;</pre></div>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-04.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 4: Filtering with WHERE</span></a><a class="nav-btn next" href="chapter-06.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 6: Creating & Modifying Tables</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>

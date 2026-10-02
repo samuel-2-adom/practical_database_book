@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 12 -- Parameterised Queries | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python &middot; SQL &middot; Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav"><div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link active" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+</div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728;</button>
+      <span class="progress-label">Chapter 12 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 12</div>
+    <h1 class="chapter-title">Parameterised Queries</h1>
+    <p class="chapter-lead">The question marks you have been using are not just convenient -- they are essential for security. This chapter explains SQL injection and why parameterised queries prevent it.</p>
+    
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul>
+<li>What SQL injection is and why it matters</li>
+<li>How parameterised queries prevent it</li>
+<li>Named parameters -- cleaner syntax for many values</li>
+<li>Inserting many rows efficiently with executemany</li>
+</ul></div>
+<h2>12.1 The Problem -- SQL Injection</h2>
+<p>Imagine you build a search using string formatting:</p>
+<pre><span class="cm"># DANGEROUS -- never do this</span>
+user_input = <span class="str">"' OR '1'='1"</span>
+query = <span class="fn">f</span><span class="str">"SELECT * FROM users WHERE name = '{user_input}'"</span>
+<span class="cm"># becomes: SELECT * FROM users WHERE name = '' OR '1'='1'</span>
+<span class="cm"># returns ALL rows -- security disaster</span></pre>
+<p>An attacker can manipulate your SQL by injecting their own SQL through the input. This is called SQL injection -- one of the most common and dangerous web vulnerabilities.</p>
+<h2>12.2 The Solution -- Parameterised Queries</h2>
+<pre><span class="cm"># SAFE -- always do this</span>
+user_input = <span class="str">"' OR '1'='1"</span>
+conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM users WHERE name = ?"</span>, (user_input,))
+<span class="cm"># sqlite3 treats the input as a value, not SQL</span>
+<span class="cm"># returns zero rows -- correct behaviour</span></pre>
+<p>The <code>?</code> is a placeholder. sqlite3 sends the query and the parameters separately -- the database never mixes them, so injected SQL is impossible.</p>
+<div class="callout mistake"><div class="callout-title">Never build SQL with string formatting</div>
+<div class="callout-body"><p>Not f-strings, not % formatting, not + concatenation. Always use ? placeholders. No exceptions. This applies to all user input, file content, API data -- any external value.</p></div></div>
+<h2>12.3 Named Parameters -- Cleaner for Many Values</h2>
+<p>When you have many parameters, positional ? gets confusing. Use named parameters instead:</p>
+<pre><span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+task = {
+    <span class="str">"title"</span>:    <span class="str">"Learn parameterised queries"</span>,
+    <span class="str">"priority"</span>: <span class="str">"high"</span>,
+    <span class="str">"status"</span>:   <span class="str">"pending"</span>,
+    <span class="str">"created"</span>:  datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(),
+}
+
+conn.<span class="fn">execute</span>(
+    <span class="str">"INSERT INTO tasks (title, priority, status, created_at) VALUES (:title, :priority, :status, :created)"</span>,
+    task
+)</pre>
+<h2>12.4 executemany -- Batch Inserts</h2>
+<pre>tasks = [
+    (<span class="str">"Task one"</span>,   <span class="str">"high"</span>,   <span class="str">"2024-01-01"</span>),
+    (<span class="str">"Task two"</span>,   <span class="str">"medium"</span>, <span class="str">"2024-01-02"</span>),
+    (<span class="str">"Task three"</span>, <span class="str">"low"</span>,    <span class="str">"2024-01-03"</span>),
+]
+
+<span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+    conn.<span class="fn">executemany</span>(
+        <span class="str">"INSERT INTO tasks (title, priority, created_at) VALUES (?, ?, ?)"</span>,
+        tasks
+    )
+<span class="cm"># inserts all three rows in one efficient operation</span></pre>
+<div class="exercise-block"><div class="exercise-title">Exercises</div>
+<div class="question" data-correct="B"><div class="question-text">Q1 -- What is SQL injection?</div>
+<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> A way to speed up SQL queries</li>
+<li class="option" data-value="B"><span class="option-key">B</span> Malicious SQL inserted through user input to manipulate database operations</li>
+<li class="option" data-value="C"><span class="option-key">C</span> A Python error type</li></ul>
+<button class="reveal-btn" data-target="c12q1" data-show-label="Show" data-hide-label="Hide">Show</button>
+<div class="reveal-content" id="c12q1">SQL injection occurs when user input is concatenated directly into a SQL string, letting attackers inject their own SQL. Parameterised queries prevent it by keeping values separate from the query structure.</div>
+</div>
+<div class="question" data-correct="C"><div class="question-text">Q2 -- What is the safe way to include a variable in a SQL query?</div>
+<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> conn.execute(f"SELECT * FROM tasks WHERE id = {task_id}")</li>
+<li class="option" data-value="B"><span class="option-key">B</span> conn.execute("SELECT * FROM tasks WHERE id = " + str(task_id))</li>
+<li class="option" data-value="C"><span class="option-key">C</span> conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))</li></ul>
+<button class="reveal-btn" data-target="c12q2" data-show-label="Show" data-hide-label="Hide">Show</button>
+<div class="reveal-content" id="c12q2">Only option C uses a parameterised query. A and B build SQL strings through concatenation -- both are vulnerable to SQL injection.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">Checkpoint</div><div class="callout-body">
+<p>Rewrite this unsafe function using parameterised queries:<br>
+<code>def find_task(name): conn.execute(f"SELECT * FROM tasks WHERE title = '{name}'")</code></p>
+<textarea class="checkpoint-input" placeholder="def find_task(name):&#10;    with sqlite3.connect('tasks.db') as conn:&#10;        ..."></textarea>
+<button class="reveal-btn" data-target="c12cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
+<div class="reveal-content" id="c12cp"><pre><span class="kw">def</span> <span class="fn">find_task</span>(name):
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+        conn.row_factory = sqlite3.<span class="cls">Row</span>
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"SELECT * FROM tasks WHERE title = ?"</span>, (name,)
+        )
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]</pre></div>
+</div></div>
+
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-11.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 11: CRUD with sqlite3</span></a><a class="nav-btn next" href="chapter-13.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 13: Transactions and Errors</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+<script src="../js/book.js"></script>
+</body></html>

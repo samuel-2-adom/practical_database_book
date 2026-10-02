@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chapter 2 — Tables, Rows & Columns | Practical Databases with Python</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="book-title">Python · SQL · Databases</div>
+      <div class="book-subtitle">Practical Databases<br>with Python</div>
+    </div>
+    <div class="sidebar-nav">
+<div class="nav-part">Front Matter</div>
+<a class="nav-link" href="../index.html"><span class="nav-num">—</span> Introduction</a>
+<div class="nav-part">Part I — SQL Fundamentals</div>
+<a class="nav-link" href="chapter-01.html"><span class="nav-num">01</span> What Is a Database?</a>
+<a class="nav-link active" href="chapter-02.html"><span class="nav-num">02</span> Tables, Rows & Columns</a>
+<a class="nav-link" href="chapter-03.html"><span class="nav-num">03</span> Your First SQL Queries</a>
+<a class="nav-link" href="chapter-04.html"><span class="nav-num">04</span> Filtering with WHERE</a>
+<a class="nav-link" href="chapter-05.html"><span class="nav-num">05</span> Sorting & Limiting</a>
+<a class="nav-link" href="chapter-06.html"><span class="nav-num">06</span> Creating & Modifying Tables</a>
+<a class="nav-link" href="chapter-07.html"><span class="nav-num">07</span> Inserting, Updating & Deleting</a>
+<a class="nav-link" href="chapter-08.html"><span class="nav-num">08</span> Joins</a>
+<a class="nav-link" href="chapter-09.html"><span class="nav-num">09</span> Aggregates & Grouping</a>
+<div class="nav-part">Part II — SQLite + Python</div>
+<a class="nav-link" href="chapter-10.html"><span class="nav-num">10</span> Intro to sqlite3</a>
+<a class="nav-link" href="chapter-11.html"><span class="nav-num">11</span> CRUD with sqlite3</a>
+<a class="nav-link" href="chapter-12.html"><span class="nav-num">12</span> Parameterised Queries</a>
+<a class="nav-link" href="chapter-13.html"><span class="nav-num">13</span> Transactions & Errors</a>
+<div class="nav-part">Part III — PostgreSQL + Python</div>
+<a class="nav-link" href="chapter-14.html"><span class="nav-num">14</span> Intro to PostgreSQL</a>
+<a class="nav-link" href="chapter-15.html"><span class="nav-num">15</span> Connecting with psycopg2</a>
+<a class="nav-link" href="chapter-16.html"><span class="nav-num">16</span> CRUD with psycopg2</a>
+<a class="nav-link" href="chapter-17.html"><span class="nav-num">17</span> SQLite vs PostgreSQL</a>
+<div class="nav-part">Part IV — Projects</div>
+<a class="nav-link" href="project-01.html"><span class="nav-num">P1</span> CLI Contact Book</a>
+<a class="nav-link" href="project-02.html"><span class="nav-num">P2</span> Expense Tracker</a>
+<a class="nav-link" href="project-03.html"><span class="nav-num">P3</span> Multi-user Notes App</a>
+<div class="nav-part">Reference</div>
+<a class="nav-link" href="sql-cheatsheet.html"><span class="nav-num">—</span> SQL Cheat Sheet</a>
+<a class="nav-link" href="glossary.html"><span class="nav-num">—</span> Glossary</a>
+
+    </div>
+    <div class="sidebar-footer">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+      <span class="progress-label">Chapter 2 of 17</span>
+    </div>
+  </nav>
+  <main class="main"><div class="chapter-content">
+    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 2</div>
+    <h1 class="chapter-title">Tables, Rows & Columns</h1>
+    <p class="chapter-lead">Every database is built from tables. This chapter makes sure you understand their structure completely before you write your first query.</p>
+    
+<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
+<li>The anatomy of a table: columns, rows, and cells</li>
+<li>Data types — what kinds of data each column can hold</li>
+<li>Primary keys and why every table needs one</li>
+<li>NULL — what it means and when it appears</li>
+</ul></div>
+<h2>2.1 Tables Are the Core Unit</h2>
+<p>Everything in a relational database lives in a table. A table is a collection of related data organised into rows and columns — similar to a spreadsheet, but with strict rules about what goes in each column.</p>
+<div class="diagram">          ┌─ column name
+          │
+┌─────────┬────────────┬──────────────────────┬──────────┐
+│ id      │ name       │ email                │ age      │  ← header row (schema)
+├─────────┼────────────┼──────────────────────┼──────────┤
+│ 1       │ Samuel     │ samuel@email.com      │ 24       │  ← row (one record)
+│ 2       │ Kwame      │ kwame@email.com       │ 31       │  ← row
+│ 3       │ Abena      │ abena@email.com       │ 28       │  ← row
+└─────────┴────────────┴──────────────────────┴──────────┘
+     ↑
+  cell (one value)</div>
+<h2>2.2 Data Types</h2>
+<p>Every column has a <strong>data type</strong> — the kind of data it can hold. The database enforces this. You can't store text in an integer column.</p>
+<table class="data-table">
+<tr><th>Type</th><th>SQLite name</th><th>PostgreSQL name</th><th>Example</th></tr>
+<tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Whole number</td><td>INTEGER</td><td>INTEGER / BIGINT</td><td>42, -7, 0</td></tr>
+<tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Decimal number</td><td>REAL</td><td>NUMERIC / FLOAT</td><td>3.14, 99.99</td></tr>
+<tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Text</td><td>TEXT</td><td>VARCHAR(n) / TEXT</td><td>'Samuel', 'Accra'</td></tr>
+<tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">True/False</td><td>INTEGER (0/1)</td><td>BOOLEAN</td><td>true, false</td></tr>
+<tr><td style="font-family:var(--font-sans);font-size:13px;color:var(--text-muted);">Date/Time</td><td>TEXT (ISO format)</td><td>DATE / TIMESTAMP</td><td>'2024-01-15'</td></tr>
+</table>
+<div class="callout tip"><div class="callout-title">💡 SQLite is flexible with types</div>
+<div class="callout-body"><p>SQLite uses "type affinity" — it's more flexible than PostgreSQL and will often accept the wrong type without complaining. PostgreSQL is strict. This book will treat types strictly from the start so you build good habits for both.</p></div></div>
+<h2>2.3 Primary Keys</h2>
+<p>Every table needs a way to uniquely identify each row. That's the <strong>primary key</strong> — a column (usually <code>id</code>) whose value is unique for every row and never NULL.</p>
+<pre><span class="sql-kw">CREATE TABLE</span> users (
+    id      <span class="sql-type">INTEGER</span>  <span class="sql-kw">PRIMARY KEY</span>,   <span class="cm">-- unique identifier</span>
+    name    <span class="sql-type">TEXT</span>     <span class="sql-kw">NOT NULL</span>,
+    email   <span class="sql-type">TEXT</span>     <span class="sql-kw">UNIQUE NOT NULL</span>
+);</pre>
+<p>In SQLite, <code>INTEGER PRIMARY KEY</code> auto-increments — each new row gets the next number automatically. In PostgreSQL you use <code>SERIAL</code> or <code>GENERATED ALWAYS AS IDENTITY</code>.</p>
+<h2>2.4 NULL — The Absence of a Value</h2>
+<p>NULL means "no value" — not zero, not an empty string, but the complete absence of data. A phone number column might be NULL if the user didn't provide one.</p>
+<pre><span class="sql-kw">INSERT INTO</span> users (name, email, phone)
+<span class="sql-kw">VALUES</span> (<span class="sql-str">'Samuel'</span>, <span class="sql-str">'s@email.com'</span>, <span class="sql-kw">NULL</span>);
+<span class="cm">-- phone is unknown, not provided</span></pre>
+<div class="callout warning"><div class="callout-title">⚠️ NULL is not zero or empty string</div>
+<div class="callout-body"><p><code>NULL</code>, <code>0</code>, and <code>''</code> are three different things. NULL means the value is unknown or not applicable. This catches beginners out constantly — we'll come back to it when filtering in Chapter 4.</p></div></div>
+<h2>2.5 A Real Table Design</h2>
+<p>Here's how the task manager you already built might look as a database table:</p>
+<div class="diagram">tasks
+┌────┬──────────────────────┬───────────┬─────────────┬─────────────────────┐
+│ id │ title                │ status    │ priority    │ created_at          │
+├────┼──────────────────────┼───────────┼─────────────┼─────────────────────┤
+│  1 │ Learn SQL basics     │ complete  │ high        │ 2024-01-10 09:00:00 │
+│  2 │ Build expense tracker│ pending   │ medium      │ 2024-01-11 14:30:00 │
+│  3 │ Read chapter 3       │ pending   │ low         │ 2024-01-12 08:00:00 │
+└────┴──────────────────────┴───────────┴─────────────┴─────────────────────┘</pre>
+<p>Each row is one task. Each column is one attribute of that task. The <code>id</code> uniquely identifies each task.</div>
+<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
+<div class="question" data-correct="B">
+<div class="question-text">Q1 — What is a primary key?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> The first column in any table</li>
+<li class="option" data-value="B"><span class="option-key">B</span> A column whose value uniquely identifies each row and is never NULL</li>
+<li class="option" data-value="C"><span class="option-key">C</span> The most important piece of data in a row</li>
+</ul>
+<button class="reveal-btn" data-target="c2q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c2q1">A primary key uniquely identifies every row in the table. No two rows can have the same primary key value, and it can never be NULL. It's how you refer to a specific record from elsewhere in the database.</div>
+</div>
+<div class="question" data-correct="C">
+<div class="question-text">Q2 — A user doesn't provide a phone number when signing up. What should the phone column contain?</div>
+<ul class="options">
+<li class="option" data-value="A"><span class="option-key">A</span> 0</li>
+<li class="option" data-value="B"><span class="option-key">B</span> An empty string ""</li>
+<li class="option" data-value="C"><span class="option-key">C</span> NULL</li>
+</ul>
+<button class="reveal-btn" data-target="c2q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
+<div class="reveal-content" id="c2q2">NULL is the correct value for "not provided" or "unknown". 0 implies a real number (zero). An empty string implies text was entered but it was blank. NULL means the value is absent entirely.</div>
+</div></div>
+<div class="callout checkpoint"><div class="callout-title">🧠 Checkpoint</div><div class="callout-body">
+<p>Design a table for your notes manager. What columns would it have? What data type for each? Which column is the primary key? Which columns could be NULL?</p>
+<textarea class="checkpoint-input" placeholder="Column name | Data type | NULL allowed? | Notes&#10;──────────────────────────────────────&#10;id           | INTEGER   | NO           | primary key&#10;..."></textarea>
+</div></div>
+    <div class="chapter-nav"><a class="nav-btn" href="chapter-01.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 1: What Is a Database?</span></a><a class="nav-btn next" href="chapter-03.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 3: Your First SQL Queries</span></a></div>
+  </div></main>
+</div>
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+<script src="../js/book.js"></script>
+</body></html>
