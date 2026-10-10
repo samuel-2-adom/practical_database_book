@@ -605,3 +605,7 @@ pre:hover .copy-btn { opacity: 1; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: baseline; }
 .dot:first-child { margin-left: 0; }
 .dot.g1 { background: var(--blue); } .dot.g2 { background: var(--accent); } .dot.g3 { background: var(--yellow); } .dot.g4 { background: var(--purple); }
+
+/* program output blocks */
+pre.output { border-left: 3px solid var(--text-dim); color: var(--text-muted); font-size: 13px; }
+pre.output::before { content: 'OUTPUT'; display: block; font-family: var(--font-sans); font-size: 10px; letter-spacing: .1em; color: var(--text-dim); margin-bottom: 6px; }

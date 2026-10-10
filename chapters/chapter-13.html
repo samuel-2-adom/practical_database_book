@@ -48,81 +48,97 @@
     </div>
   </nav>
   <main class="main"><div class="chapter-content">
-    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 13</div>
-    <h1 class="chapter-title">Transactions and Errors</h1>
-    <p class="chapter-lead">What happens when something goes wrong mid-operation? Transactions keep your data consistent. This chapter closes out Part II.</p>
-    
-<div class="objectives"><div class="objectives-title">What you will learn</div><ul>
-<li>What a transaction is and why it matters</li>
-<li>COMMIT and ROLLBACK</li>
-<li>How the context manager handles transactions automatically</li>
-<li>Handling database errors in Python</li>
-</ul></div>
-<h2>13.1 What Is a Transaction?</h2>
-<p>A transaction is a group of SQL statements that either all succeed or all fail together. The classic example is a bank transfer:</p>
-<div class="diagram">Transfer GHS 500 from Account A to Account B:
+    <div class="chapter-eyebrow">Part II &mdash; SQLite + Python &middot; Chapter 13</div>
+<h1 class="chapter-title">Transactions and Errors</h1>
+<p class="chapter-lead">What happens when something goes wrong halfway through? Transactions keep your data consistent, and exceptions tell you what failed. This chapter closes Part II.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>What a transaction is and the four guarantees it gives (ACID)</li><li>How Python's sqlite3 opens, commits and rolls back transactions</li><li>A safe money-transfer function, with every failure case tested</li><li>The sqlite3 exception types, with the real messages they produce</li><li>Where to put <code>try/except</code>, and how constraints guard your data</li></ul></div>
+<h2>13.1 What is a transaction?</h2><p>A <strong>transaction</strong> is a group of statements that the database treats as one unit: <strong>either all of them take effect, or none do</strong>. The classic example is a bank transfer of GHS 500 from Ama to Kofi, which is two UPDATEs:</p><div class="single" style="max-width:none"><div class="tbl-cap">accounts during a transfer WITHOUT a transaction</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Moment</th><th class=r>Ama</th><th class=r>Kofi</th><th class=r>Total money</th></tr></thead><tbody><tr><td>Start</td><td class=r>1000</td><td class=r>200</td><td class=r>1200</td></tr><tr class=g3><td>After step 1: deduct 500 from Ama</td><td class=r>500</td><td class=r>200</td><td class=r>700</td></tr><tr class=g3><td>Step 2 never runs (crash, power cut, bug)</td><td class=r>500</td><td class=r>200</td><td class=r>700</td></tr><tr class=g2><td>What should have happened</td><td class=r>500</td><td class=r>700</td><td class=r>1200</td></tr></tbody></table></div></div><p>The yellow rows are the disaster: GHS 500 has vanished from the system. With a transaction, step 1 is only a <em>draft</em> until step 2 also succeeds. If anything fails in between, the draft is thrown away and Ama still has 1000.</p><h2>13.2 The four guarantees (ACID)</h2><div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Letter</th><th>Name</th><th>In plain words</th></tr></thead><tbody><tr><td>A</td><td>Atomicity</td><td>all or nothing: the transfer cannot be half-done</td></tr><tr><td>C</td><td>Consistency</td><td>the data always obeys your rules (constraints) after a transaction</td></tr><tr><td>I</td><td>Isolation</td><td>while your transaction is a draft, others do not see its half-finished state (you saw this in Chapter 10)</td></tr><tr><td>D</td><td>Durability</td><td>once committed, it survives crashes and power loss</td></tr></tbody></table></div></div><p>You do not code ACID yourself. You get it by putting the related statements in <strong>one transaction</strong>, which is what this chapter shows.</p><h2>13.3 When does a transaction start?</h2><p>In Python's default mode you never write <code>BEGIN</code>. sqlite3 opens a transaction <strong>automatically right before your first INSERT, UPDATE or DELETE</strong>, and it stays open until you commit or roll back. SELECT does not open one. The connection's <code>in_transaction</code> flag lets you watch:</p><pre>conn = sqlite3.<span class="fn">connect</span>(<span class="str">":memory:"</span>)
+conn.<span class="fn">execute</span>(<span class="str">"CREATE TABLE z (a)"</span>)
 
-Step 1: Deduct 500 from Account A
-Step 2: Add 500 to Account B
+<span class="fn">print</span>(conn.in_transaction)          <span class="cm"># False</span>
+conn.<span class="fn">execute</span>(<span class="str">"INSERT INTO z VALUES (1)"</span>)
+<span class="fn">print</span>(conn.in_transaction)          <span class="cm"># True   a transaction opened by itself</span>
+conn.<span class="fn">commit</span>()
+<span class="fn">print</span>(conn.in_transaction)          <span class="cm"># False  closed by the commit</span>
 
-If step 2 fails, step 1 must be reversed.
-Without a transaction, you lose GHS 500 -- deducted but never added.</div>
-<p>Transactions guarantee this cannot happen. Either both steps complete (COMMIT) or neither does (ROLLBACK).</p>
-<h2>13.2 COMMIT and ROLLBACK</h2>
-<pre><span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"bank.db"</span>) <span class="kw">as</span> conn:
+conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM z"</span>)
+<span class="fn">print</span>(conn.in_transaction)          <span class="cm"># False  reading opens nothing</span></pre>
+<p>Two ways out of an open transaction: <code>conn.commit()</code> makes every statement since the start permanent; <code>conn.rollback()</code> throws them all away.</p><h2>13.4 A safe transfer</h2><p>Here is the accounts table. The <code>CHECK</code> rule makes a negative balance impossible at the database level (more in 13.7):</p><pre><span class="sql-kw">CREATE</span> <span class="sql-kw">TABLE</span> accounts (
+    id      <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY</span> <span class="sql-kw">KEY</span>,
+    owner   <span class="sql-type">TEXT</span> <span class="sql-kw">NOT</span> <span class="sql-kw">NULL</span>,
+    balance <span class="sql-type">REAL</span> <span class="sql-kw">NOT</span> <span class="sql-kw">NULL</span> CHECK (balance &gt;= <span class="sql-num">0</span>)
+);</pre>
+<p>And the transfer, using the nested <code>with</code> pattern from Chapter 10:</p><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> contextlib <span class="kw">import</span> closing
+
+DB = <span class="str">"bank.db"</span>
+
+<span class="kw">def</span> <span class="fn">transfer</span>(from_id, to_id, amount):
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:      <span class="cm"># closes the connection</span>
+        <span class="kw">with</span> conn:                                  <span class="cm"># commit, or rollback on ANY exception</span>
+            cur = conn.<span class="fn">execute</span>(
+                <span class="str">"UPDATE accounts SET balance = balance - ? WHERE id = ? AND balance &gt;= ?"</span>,
+                (amount, from_id, amount))
+            <span class="kw">if</span> cur.rowcount == <span class="num">0</span>:
+                <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"insufficient funds or unknown sender"</span>)
+
+            cur = conn.<span class="fn">execute</span>(
+                <span class="str">"UPDATE accounts SET balance = balance + ? WHERE id = ?"</span>,
+                (amount, to_id))
+            <span class="kw">if</span> cur.rowcount == <span class="num">0</span>:
+                <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"unknown receiver"</span>)</pre>
+<p>How it works, step by step:</p><div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Piece</th><th>Why</th></tr></thead><tbody><tr><td><code>AND balance &gt;= ?</code></td><td>checks the funds <em>and</em> deducts in one statement. If the money is not there, zero rows change and <code>rowcount</code> is 0.</td></tr><tr><td><code>if cur.rowcount == 0: raise</code></td><td>turns a silent &ldquo;nothing happened&rdquo; into a loud error</td></tr><tr><td>raising <em>inside</em> <code>with conn</code></td><td>the block sees an exception and <strong>rolls back</strong>, undoing the first UPDATE if the second one fails</td></tr><tr><td>no explicit <code>commit()</code></td><td>reaching the end of the <code>with conn</code> block without an error commits automatically</td></tr></tbody></table></div></div><p>Test all three outcomes, starting with Ama 1000 and Kofi 200:</p><pre><span class="fn">transfer</span>(<span class="num">1</span>, <span class="num">2</span>, <span class="num">500</span>)       <span class="cm"># works</span>
+<span class="fn">transfer</span>(<span class="num">1</span>, <span class="num">2</span>, <span class="num">5000</span>)      <span class="cm"># ValueError: insufficient funds or unknown sender</span>
+<span class="fn">transfer</span>(<span class="num">1</span>, <span class="num">99</span>, <span class="num">100</span>)      <span class="cm"># ValueError: unknown receiver</span></pre>
+<div class="single"><div class="tbl"><div class="tbl-cap">balances after all three calls</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>owner</th><th class=r>balance</th></tr></thead><tbody><tr class=g2><td>Ama</td><td class=r>500.0</td></tr><tr class=g2><td>Kofi</td><td class=r>700.0</td></tr></tbody></table></div></div></div>
+<p>The third call is the important one. Ama's 100 <em>was</em> deducted by the first UPDATE, but the receiver did not exist, so the exception rolled the deduction back. Ama still has 500, and no money was lost.</p><div class="callout tip"><div class="callout-title">Redundant commit and rollback</div><div class="callout-body"><p>You may see code like <code>try: ...; conn.commit() except: conn.rollback(); raise</code> wrapped <em>inside</em> a <code>with</code> block. The <code>with</code> already does both. Explicit <code>commit()</code> is only useful when you want to save a checkpoint mid-way, and <code>rollback()</code> when you want to undo <em>without</em> raising an error.</p></div></div>
+<h2>13.5 The sqlite3 exceptions</h2><p>When SQLite refuses something, Python raises an exception from the <code>sqlite3</code> module. They form a family, and you catch the one that matches the problem you can handle:</p><div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Exception</th><th>Typical cause</th><th>Real message</th></tr></thead><tbody><tr><td><code>sqlite3.Error</code></td><td>base class: catches every sqlite3 problem</td><td>&mdash;</td></tr><tr><td><code>sqlite3.IntegrityError</code></td><td>a rule was broken: UNIQUE, NOT NULL, CHECK, FOREIGN KEY</td><td>UNIQUE constraint failed: users.username</td></tr><tr><td><code>sqlite3.OperationalError</code></td><td>table missing, SQL syntax error, database locked</td><td>no such table: nope</td></tr><tr><td><code>sqlite3.ProgrammingError</code></td><td>a mistake in your code, such as the wrong number of parameters</td><td>Incorrect number of bindings supplied. The current statement uses 1, and there are 2 supplied.</td></tr></tbody></table></div></div><p>The exact message is what you log or show: it names the table and column. Print it while you are learning:</p><pre><span class="kw">try</span>:
+    conn.<span class="fn">execute</span>(<span class="str">"INSERT INTO users (username, email) VALUES (?, ?)"</span>, (<span class="str">"a"</span>, <span class="str">"b@x"</span>))
+<span class="kw">except</span> sqlite3.<span class="cls">Error</span> <span class="kw">as</span> e:
+    <span class="fn">print</span>(<span class="fn">type</span>(e).__name__, <span class="str">"-"</span>, e)
+<span class="cm"># IntegrityError - UNIQUE constraint failed: users.username</span></pre>
+<h2>13.6 Where does the try/except go?</h2><p>Put it <strong>outside</strong> the <code>with</code>. That order matters: when an error happens inside the block, the <code>with</code> rolls back first, <em>then</em> the exception travels up to your <code>except</code>. Your handler always sees a database that is already clean.</p><pre><span class="kw">def</span> <span class="fn">add_user</span>(username, email):
     <span class="kw">try</span>:
-        conn.<span class="fn">execute</span>(<span class="str">"UPDATE accounts SET balance = balance - 500 WHERE id = 1"</span>)
-        conn.<span class="fn">execute</span>(<span class="str">"UPDATE accounts SET balance = balance + 500 WHERE id = 2"</span>)
-        conn.<span class="fn">commit</span>()    <span class="cm"># both succeeded -- save changes</span>
-    <span class="kw">except</span> <span class="cls">Exception</span>:
-        conn.<span class="fn">rollback</span>()  <span class="cm"># something failed -- undo everything</span>
-        <span class="kw">raise</span></pre>
-<div class="callout tip"><div class="callout-title">The context manager handles this automatically</div>
-<div class="callout-body"><p>When you use <code>with sqlite3.connect() as conn</code>, Python commits on a clean exit and rolls back if an exception occurs. You only need explicit commit/rollback for complex multi-step operations.</p></div></div>
-<h2>13.3 Handling Database Errors</h2>
-<pre><span class="kw">import</span> sqlite3
-
-<span class="kw">def</span> <span class="fn">add_user</span>(username, email):
-    <span class="kw">try</span>:
-        <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"users.db"</span>) <span class="kw">as</span> conn:
-            conn.<span class="fn">execute</span>(
-                <span class="str">"INSERT INTO users (username, email) VALUES (?, ?)"</span>,
-                (username, email)
-            )
+        <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(<span class="str">"users.db"</span>)) <span class="kw">as</span> conn:
+            <span class="kw">with</span> conn:
+                conn.<span class="fn">execute</span>(
+                    <span class="str">"INSERT INTO users (username, email) VALUES (?, ?)"</span>, (username, email))
         <span class="kw">return</span> <span class="kw">True</span>
-    <span class="kw">except</span> sqlite3.<span class="cls">IntegrityError</span>:
-        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Username or email already exists"</span>)
-        <span class="kw">return</span> <span class="kw">False</span>
-    <span class="kw">except</span> sqlite3.<span class="cls">OperationalError</span> <span class="kw">as</span> e:
-        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Database error: {e}"</span>)
+    <span class="kw">except</span> sqlite3.<span class="cls">IntegrityError</span> <span class="kw">as</span> e:
+        <span class="fn">print</span>(<span class="str">f"Cannot add user: {e}"</span>)           <span class="cm"># e.g. UNIQUE constraint failed: users.email</span>
         <span class="kw">return</span> <span class="kw">False</span></pre>
-<h2>13.4 Common sqlite3 Exceptions</h2>
-<div class="diagram">sqlite3.Error                 (base class for all)
-  sqlite3.IntegrityError      UNIQUE or NOT NULL violated
-  sqlite3.OperationalError    table missing, SQL syntax error
-  sqlite3.ProgrammingError    wrong number of parameters</div>
+<p>Only <code>IntegrityError</code> is caught, because that is the one failure we can explain to the user (&ldquo;that name is taken&rdquo;). Anything else, such as a missing table, is a bug or an environment problem and should crash loudly so you notice.</p><div class="callout mistake"><div class="callout-title">Swallowing errors</div><div class="callout-body"><p><code>except Exception: pass</code> hides every problem, including bugs unrelated to the database. Catch the narrowest exception you can handle. If you catch something broad to log it, <code>raise</code> it again afterwards.</p></div></div>
+<h2>13.7 Constraints are your guard rails</h2><p>The best error handling is a database that refuses bad data in the first place. Constraints do that, and break with <code>IntegrityError</code>:</p><div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Constraint</th><th>Refuses</th><th>Message</th></tr></thead><tbody><tr><td><code>NOT NULL</code></td><td>a missing value</td><td>NOT NULL constraint failed: users.username</td></tr><tr><td><code>UNIQUE</code></td><td>a duplicate</td><td>UNIQUE constraint failed: users.username</td></tr><tr><td><code>CHECK (balance &gt;= 0)</code></td><td>a value that breaks your rule</td><td>CHECK constraint failed: balance &gt;= 0</td></tr><tr><td><code>FOREIGN KEY</code></td><td>a link to a row that does not exist</td><td>FOREIGN KEY constraint failed</td></tr></tbody></table></div></div><div class="callout warning"><div class="callout-title">SQLite quirk: foreign keys are OFF by default</div><div class="callout-body"><p>Unlike PostgreSQL, SQLite only enforces <code>FOREIGN KEY</code> if you turn it on, and you must do it <strong>on every new connection</strong>:</p></div></div>
+<pre>conn = sqlite3.<span class="fn">connect</span>(DB)
+conn.<span class="fn">execute</span>(<span class="str">"PRAGMA foreign_keys = ON"</span>)
+
+conn.<span class="fn">execute</span>(<span class="str">"INSERT INTO note_tags (note_id, tag_id) VALUES (99, 1)"</span>)   <span class="cm"># note 99 does not exist</span>
+<span class="cm"># IntegrityError - FOREIGN KEY constraint failed</span></pre>
+<p>Without that PRAGMA line, the insert above would succeed silently and leave a link pointing at nothing. If you use the <code>connect()</code> helper from Chapter 11, add the PRAGMA line there once. This is a good example of a difference between SQLite and PostgreSQL you will meet again in Chapter 17.</p><div class="callout sqlite"><div class="callout-title">&ldquo;database is locked&rdquo;</div><div class="callout-body"><p>SQLite allows one writer at a time. If two programs write at once, the second waits (5 seconds by default) and then raises <code>OperationalError: database is locked</code>. The fix is to keep transactions <strong>short</strong>: open, write, commit, close. Never leave a connection holding an uncommitted write while you wait for user input.</p></div></div>
 <div class="exercise-block"><div class="exercise-title">Exercises</div>
-<div class="question" data-correct="C"><div class="question-text">Q1 -- What happens to a transaction when an exception occurs inside a with...connect() block?</div>
-<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Changes are saved anyway</li>
-<li class="option" data-value="B"><span class="option-key">B</span> The database file is deleted</li>
-<li class="option" data-value="C"><span class="option-key">C</span> The transaction is rolled back automatically</li></ul>
-<button class="reveal-btn" data-target="c13q1" data-show-label="Show" data-hide-label="Hide">Show</button>
-<div class="reveal-content" id="c13q1">The context manager rolls back on exception. Any changes made during the block are undone, leaving the database in its previous state.</div>
+<div class="question" data-correct="B"><div class="question-text">Q1 &mdash; An exception is raised inside <code>with conn:</code> after one UPDATE has run. What happens to that UPDATE?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> It is saved anyway</li><li class="option" data-value="B"><span class="option-key">B</span> It is rolled back automatically</li><li class="option" data-value="C"><span class="option-key">C</span> The database file is deleted</li></ul><button class="reveal-btn" data-target="c13q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c13q1">The with block rolls the transaction back when an exception escapes, so the earlier UPDATE is undone.</div></div>
+<div class="question" data-correct="A"><div class="question-text">Q2 &mdash; Which exception does a duplicate value in a UNIQUE column raise?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> <code>sqlite3.IntegrityError</code></li><li class="option" data-value="B"><span class="option-key">B</span> <code>sqlite3.OperationalError</code></li><li class="option" data-value="C"><span class="option-key">C</span> <code>ValueError</code></li></ul><button class="reveal-btn" data-target="c13q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c13q2">Constraint violations (UNIQUE, NOT NULL, CHECK, FOREIGN KEY) raise IntegrityError. OperationalError is for structural problems such as a missing table or a syntax error.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q3 &mdash; Why is <code>UPDATE ... SET balance = balance - ? WHERE id = ? AND balance &gt;= ?</code> better than a SELECT followed by an UPDATE?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> It is shorter to type</li><li class="option" data-value="B"><span class="option-key">B</span> It checks and changes the balance in a single step, so the check cannot go stale</li><li class="option" data-value="C"><span class="option-key">C</span> It avoids needing a transaction</li></ul><button class="reveal-btn" data-target="c13q3" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c13q3">With separate SELECT and UPDATE, the balance could change between the two steps. One statement makes the check and the change atomic. You still need the transaction to cover both UPDATEs of the transfer.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q4 &mdash; Where should the <code>try/except sqlite3.IntegrityError</code> go relative to the <code>with</code> block?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Inside it, around each execute</li><li class="option" data-value="B"><span class="option-key">B</span> Outside it, so the rollback happens before the handler runs</li><li class="option" data-value="C"><span class="option-key">C</span> It does not matter</li></ul><button class="reveal-btn" data-target="c13q4" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c13q4">Outside. The with block rolls back as the exception leaves it, so your handler always runs against a clean database.</div></div>
 </div>
-<div class="question" data-correct="A"><div class="question-text">Q2 -- You try to insert a username that already exists (UNIQUE constraint). Which exception is raised?</div>
-<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> sqlite3.IntegrityError</li>
-<li class="option" data-value="B"><span class="option-key">B</span> sqlite3.OperationalError</li>
-<li class="option" data-value="C"><span class="option-key">C</span> ValueError</li></ul>
-<button class="reveal-btn" data-target="c13q2" data-show-label="Show" data-hide-label="Hide">Show</button>
-<div class="reveal-content" id="c13q2">IntegrityError is raised when a constraint is violated -- UNIQUE, NOT NULL, FOREIGN KEY. OperationalError covers structural issues like missing tables or syntax errors.</div>
-</div></div>
-<div class="callout checkpoint"><div class="callout-title">Part II Complete</div><div class="callout-body">
-<p>You can now build a complete Python program backed by SQLite. Write a transfer(from_id, to_id, amount) function that moves money between two accounts atomically -- both updates succeed or neither does.</p>
-<textarea class="checkpoint-input" style="min-height:120px;" placeholder="def transfer(from_id, to_id, amount):&#10;    try:&#10;        with sqlite3.connect('bank.db') as conn:&#10;            ..."></textarea>
-</div></div>
-<div class="callout concept"><div class="callout-title">Part II complete</div><div class="callout-body">
-<p>You can now build Python programs backed by SQLite: create databases, insert and query data safely, handle errors, and keep data consistent with transactions. Part III moves to PostgreSQL -- a real server you can run in production.</p>
-</div></div>
+<div class="callout checkpoint"><div class="callout-title">Part II checkpoint: transfer</div><div class="callout-body"><p>Write <code>transfer(from_id, to_id, amount)</code> from memory. It must (1) refuse overdrafts, (2) refuse an unknown receiver and undo the withdrawal in that case, and (3) refuse a non-positive amount before touching the database. Then test all three failures and check the balances did not change.</p><textarea class="checkpoint-input" style="min-height:140px;" placeholder="def transfer(from_id, to_id, amount):
+    if amount &lt;= 0:
+        ..."></textarea><button class="reveal-btn" data-target="c13cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button><div class="reveal-content" id="c13cp"><pre><span class="kw">def</span> <span class="fn">transfer</span>(from_id, to_id, amount):
+    <span class="kw">if</span> amount &lt;= <span class="num">0</span>:
+        <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"amount must be positive"</span>)      <span class="cm"># checked before any SQL</span>
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn:
+            cur = conn.<span class="fn">execute</span>(
+                <span class="str">"UPDATE accounts SET balance = balance - ? WHERE id = ? AND balance &gt;= ?"</span>,
+                (amount, from_id, amount))
+            <span class="kw">if</span> cur.rowcount == <span class="num">0</span>:
+                <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"insufficient funds or unknown sender"</span>)
+            cur = conn.<span class="fn">execute</span>(
+                <span class="str">"UPDATE accounts SET balance = balance + ? WHERE id = ?"</span>, (amount, to_id))
+            <span class="kw">if</span> cur.rowcount == <span class="num">0</span>:
+                <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"unknown receiver"</span>)      <span class="cm"># triggers rollback of the withdrawal</span></pre>
+</div></div></div>
+<div class="callout concept"><div class="callout-title">Part II complete</div><div class="callout-body"><p>You can now build Python programs backed by SQLite: create databases, run CRUD safely with placeholders, handle errors precisely, and keep related changes together with transactions. Part III moves to PostgreSQL, a real database server used in production. Almost everything you learned carries over, with a few differences you will notice.</p></div></div>
 
     <div class="chapter-nav"><a class="nav-btn" href="chapter-12.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 12: Parameterised Queries</span></a><a class="nav-btn next" href="chapter-14.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 14: Intro to PostgreSQL</span></a></div>
   </div></main>

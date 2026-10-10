@@ -48,75 +48,218 @@
     </div>
   </nav>
   <main class="main"><div class="chapter-content">
-    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 11</div>
-    <h1 class="chapter-title">CRUD with sqlite3</h1>
-    <p class="chapter-lead">Create, Read, Update, Delete -- all from Python. The SQL from Part I becomes real working code.</p>
-    
-<div class="objectives"><div class="objectives-title">What you will learn</div><ul>
-<li>INSERT from Python</li><li>SELECT and fetching rows as Python data</li>
-<li>fetchall, fetchone, row factories</li><li>UPDATE and DELETE from Python</li>
-</ul></div>
-<h2>11.1 INSERT</h2>
-<pre><span class="kw">import</span> sqlite3
+    <div class="chapter-eyebrow">Part II &mdash; SQLite + Python &middot; Chapter 11</div>
+<h1 class="chapter-title">CRUD with sqlite3</h1>
+<p class="chapter-lead">Create, Read, Update, Delete from Python. You will build a complete, reusable storage layer for your task manager, one function at a time.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>The four CRUD operations as Python functions, each one explained line by line</li><li><code>lastrowid</code> and <code>rowcount</code>: how SQLite tells you what happened</li><li>Reading rows: tuples, <code>sqlite3.Row</code> and dicts</li><li>A reusable <code>connect()</code> helper so you stop repeating boilerplate</li><li>Moving your JSON-based task manager into SQLite</li></ul></div>
+<h2>11.1 The plan: a storage layer</h2><p>CRUD stands for <strong>C</strong>reate, <strong>R</strong>ead, <strong>U</strong>pdate, <strong>D</strong>elete: the four things every app does with its data. You already know the SQL for each. The job now is to wrap each one in a small Python function so the rest of your program never touches SQL directly. That wrapper is called a <strong>storage layer</strong>.</p><div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Operation</th><th>SQL</th><th>Our function</th><th>Finishes with</th></tr></thead><tbody><tr><td>Create</td><td>INSERT</td><td>add_task(title, priority)</td><td><code>cur.lastrowid</code>: the new id</td></tr><tr><td>Read</td><td>SELECT</td><td>get_task(id), get_tasks(status)</td><td><code>fetchone()</code> / <code>fetchall()</code></td></tr><tr><td>Update</td><td>UPDATE</td><td>update_status(id, status)</td><td><code>cur.rowcount</code>: rows changed</td></tr><tr><td>Delete</td><td>DELETE</td><td>delete_task(id)</td><td><code>cur.rowcount</code>: rows removed</td></tr></tbody></table></div></div><h3>One helper instead of the same four lines everywhere</h3><p>From Chapter 10, every function needs: open connection, wrap in <code>with</code> to commit or roll back, close at the end. Writing that in every function is noisy and easy to get wrong, so we write it <em>once</em>:</p><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> contextlib <span class="kw">import</span> contextmanager
 <span class="kw">from</span> datetime <span class="kw">import</span> datetime
 
-<span class="kw">def</span> <span class="fn">add_task</span>(title, priority=<span class="str">"medium"</span>):
-    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+DB = <span class="str">"tasks.db"</span>
+
+@contextmanager
+<span class="kw">def</span> <span class="fn">connect</span>():
+    conn = sqlite3.<span class="fn">connect</span>(DB)
+    <span class="kw">try</span>:
+        <span class="kw">with</span> conn:              <span class="cm"># commit on success, rollback on error</span>
+            yield conn          <span class="cm"># &lt;- your code in the "with connect()" block runs here</span>
+    finally:
+        conn.<span class="fn">close</span>()            <span class="cm"># always runs, even after an error</span></pre>
+<p>The <code>@contextmanager</code> decorator turns a function into something you can use with <code>with</code>. Everything <em>before</em> <code>yield</code> runs when the block starts; everything <em>after</em> runs when it ends:</p><div class="flow"><div class="flow-step"><b>1 &middot; open</b><code>sqlite3.connect(DB)</code> runs.</div><div class="flow-step"><b>2 &middot; your code</b>The body of <code>with connect() as conn:</code> runs at <code>yield</code>.</div><div class="flow-step"><b>3 &middot; commit / rollback</b>Inner <code>with conn</code>: commit if no error, rollback if an exception.</div><div class="flow-step"><b>4 &middot; close</b><code>finally</code> closes the connection no matter what.</div></div>
+<p>You do not need to understand generators to use it: just treat <code>with connect() as conn:</code> as &ldquo;safe database session&rdquo;. Now the table setup:</p><pre><span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(<span class="str">"""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                title      TEXT NOT NULL,
+                status     TEXT NOT NULL DEFAULT 'pending',
+                priority   TEXT NOT NULL DEFAULT 'medium',
+                created_at TEXT NOT NULL
+            )"""</span>)</pre>
+<h2>11.2 Create: INSERT</h2><pre><span class="kw">def</span> <span class="fn">add_task</span>(title, priority=<span class="str">"medium"</span>):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
         cur = conn.<span class="fn">execute</span>(
             <span class="str">"INSERT INTO tasks (title, priority, created_at) VALUES (?, ?, ?)"</span>,
-            (title, priority, datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>())
+            (title, priority, datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="str">"seconds"</span>)),
         )
         <span class="kw">return</span> cur.lastrowid
 
 task_id = <span class="fn">add_task</span>(<span class="str">"Learn sqlite3"</span>, <span class="str">"high"</span>)
-<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Created task #{task_id}"</span>)</pre>
-<h2>11.2 SELECT</h2>
-<pre><span class="kw">def</span> <span class="fn">get_all_tasks</span>():
-    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
-        cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks ORDER BY created_at DESC"</span>)
-        <span class="kw">return</span> cur.<span class="fn">fetchall</span>()   <span class="cm"># list of tuples</span>
+<span class="fn">print</span>(<span class="str">f"Created task #{task_id}"</span>)</pre>
+<pre class="output">Created task #1</pre>
+<p>Line by line:</p><div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Piece</th><th>What it does</th></tr></thead><tbody><tr><td>(?, ?, ?) and the tuple</td><td>placeholders for the three values (Chapter 12 explains why this is essential for safety)</td></tr><tr><td>not listing <code>status</code></td><td>the column's DEFAULT fills in <code>'pending'</code> for us</td></tr><tr><td>not listing <code>id</code></td><td>AUTOINCREMENT assigns the next number; you never invent ids</td></tr><tr><td><code>isoformat(timespec=&quot;seconds&quot;)</code></td><td>SQLite has no date type, so dates are stored as text like <code>2026-10-10T14:30:05</code>. This format sorts correctly alphabetically.</td></tr><tr><td><code>cur.lastrowid</code></td><td>the id SQLite just assigned. You need it to refer to the row later.</td></tr></tbody></table></div></div><p>The table after that call:</p><div class="single"><div class="tbl"><div class="tbl-cap">tasks</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>title</th><th>status</th><th>priority</th><th>created_at</th></tr></thead><tbody><tr><td>1</td><td>Learn sqlite3</td><td>pending</td><td>high</td><td>2026-10-10T14:30:05</td></tr></tbody></table></div></div></div>
+<div class="callout tip"><div class="callout-title">Return after the work, inside the block</div><div class="callout-body"><p>Notice <code>return cur.lastrowid</code> sits <em>inside</em> <code>with connect()</code>. The commit still happens (leaving the block by <code>return</code> counts as a normal exit), and the connection is closed afterwards. A plain number is safe to hand back; a cursor is not.</p></div></div>
+<h2>11.3 Read: SELECT</h2><p>From Chapter 10: <code>execute</code> runs the query, a fetch method moves the rows into Python. Reading needs <strong>no commit</strong>, but we still use <code>connect()</code> for the open-and-close handling.</p><pre><span class="kw">def</span> <span class="fn">get_all_tasks</span>():
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks ORDER BY id DESC"</span>)
+        <span class="kw">return</span> cur.<span class="fn">fetchall</span>()            <span class="cm"># a list of tuples</span>
 
 <span class="kw">for</span> row <span class="kw">in</span> <span class="fn">get_all_tasks</span>():
-    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"[{row[0]}] {row[1]} -- {row[2]}"</span>)</pre>
-<h2>11.3 Row Factories -- Dicts Instead of Tuples</h2>
-<pre><span class="kw">def</span> <span class="fn">get_all_tasks</span>():
-    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
-        conn.row_factory = sqlite3.<span class="cls">Row</span>
-        cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks"</span>)
-        <span class="kw">return</span> [<span class="fn">dict</span>(row) <span class="kw">for</span> row <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]
+    <span class="fn">print</span>(<span class="str">f"[{row[0]}] {row[1]} -- {row[2]}"</span>)</pre>
+<pre class="output">[3] Buy domain -- pending
+[2] Email Kwame -- complete
+[1] Learn sqlite3 -- pending</pre>
+<p>When you want exactly <em>one</em> row (look up by id), use <code>fetchone()</code>. It returns the row, or <code>None</code> if nothing matched, so always check:</p><pre><span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+    row = conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks WHERE id = ?"</span>, (<span class="num">99</span>,)).<span class="fn">fetchone</span>()
 
-<span class="kw">for</span> task <span class="kw">in</span> <span class="fn">get_all_tasks</span>():
-    <span class="fn">print</span>(task[<span class="str">"title"</span>], task[<span class="str">"status"</span>])   <span class="cm"># by name, not index</span></pre>
-<h2>11.4 UPDATE and DELETE</h2>
-<pre><span class="kw">def</span> <span class="fn">complete_task</span>(task_id):
-    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
-        conn.<span class="fn">execute</span>(<span class="str">"UPDATE tasks SET status=? WHERE id=?"</span>, (<span class="str">"complete"</span>, task_id))
+<span class="kw">if</span> row is <span class="kw">None</span>:
+    <span class="fn">print</span>(<span class="str">"No such task"</span>)</pre>
+<div class="callout mistake"><div class="callout-title">Indexing None</div><div class="callout-body"><p><code>row[1]</code> on a missing row crashes with <code>TypeError: 'NoneType' object is not subscriptable</code>. Look-up functions should check for <code>None</code> before using the row.</p></div></div>
+<h2>11.4 Row factories: names instead of numbers</h2><p><code>row[1]</code> means &ldquo;the second column&rdquo;. Add a column to the SELECT or reorder it, and every index in your code silently points at the wrong thing. A <strong>row factory</strong> changes what kind of object each row is. One extra line in <code>connect()</code>:</p><pre>conn = sqlite3.<span class="fn">connect</span>(DB)
+conn.row_factory = sqlite3.<span class="cls">Row</span>         <span class="cm"># &lt;- add this line right after connect</span></pre>
+<div class="single" style="max-width:none"><div class="tbl-scroll"><table class="data-table"><thead><tr><th></th><th>Default (tuple)</th><th>sqlite3.Row</th><th>dict(row)</th></tr></thead><tbody><tr><td>by position <code>row[1]</code></td><td>yes</td><td>yes</td><td>no</td></tr><tr><td>by name <code>row[&quot;title&quot;]</code></td><td>no</td><td>yes</td><td>yes</td></tr><tr><td>print it</td><td><code>(1, 'x', 'pending')</code></td><td><code>&lt;sqlite3.Row ...&gt;</code> (unreadable)</td><td><code>{'id': 1, 'title': 'x', ...}</code></td></tr><tr><td>convert to JSON</td><td>awkward</td><td>no</td><td>yes: ready for <code>json.dumps</code></td></tr></tbody></table></div></div><p>The pattern: use <code>Row</code> while you work with the cursor, then convert to plain dicts with <code>dict(row)</code> before returning. Now the finished read functions, including an optional filter:</p><pre><span class="kw">def</span> <span class="fn">get_task</span>(task_id):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        row = conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks WHERE id = ?"</span>, (task_id,)).<span class="fn">fetchone</span>()
+        <span class="kw">return</span> <span class="fn">dict</span>(row) <span class="kw">if</span> row <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="kw">def</span> <span class="fn">get_tasks</span>(status=<span class="kw">None</span>):
+    sql = <span class="str">"SELECT * FROM tasks"</span>
+    params = []
+    <span class="kw">if</span> status is <span class="kw">not</span> <span class="kw">None</span>:
+        sql += <span class="str">" WHERE status = ?"</span>
+        params.<span class="fn">append</span>(status)
+    sql += <span class="str">" ORDER BY id"</span>
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> conn.<span class="fn">execute</span>(sql, params)]</pre>
+<p>Two things to notice. First, <code>get_tasks</code> adds <em>text you wrote</em> (<code>&quot; WHERE status = ?&quot;</code>) to the SQL, but the user's value still travels through the <code>?</code> and <code>params</code>. That is safe. Second, you can loop straight over the cursor (<code>for r in conn.execute(...)</code>) without calling <code>fetchall()</code>.</p><h2>11.5 Update: UPDATE</h2><pre><span class="kw">def</span> <span class="fn">update_status</span>(task_id, status):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"UPDATE tasks SET status = ? WHERE id = ?"</span>, (status, task_id))
+        <span class="kw">return</span> cur.rowcount &gt; <span class="num">0</span>          <span class="cm"># True if a row was actually changed</span></pre>
+<p><code>cur.rowcount</code> is how many rows the statement changed. This matters because updating a task that does not exist is <strong>not an error</strong>: SQL happily changes zero rows and says nothing. Checking <code>rowcount</code> lets your function report it:</p><pre><span class="fn">update_status</span>(<span class="num">2</span>, <span class="str">"complete"</span>)     <span class="cm"># True   (task 2 exists)</span>
+<span class="fn">update_status</span>(<span class="num">99</span>, <span class="str">"complete"</span>)    <span class="cm"># False  (nothing matched; no error was raised)</span></pre>
+<div class="callout mistake"><div class="callout-title">UPDATE without WHERE changes every row</div><div class="callout-body"><p><code>UPDATE tasks SET status = ?</code> with the <code>WHERE id = ?</code> left off marks <strong>all</strong> tasks. Compare:</p></div></div>
+<div class="pair"><div class="tbl"><div class="tbl-cap">with WHERE id = 2</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>title</th><th>status</th></tr></thead><tbody><tr><td>1</td><td>Learn sqlite3</td><td>pending</td></tr><tr class=g2><td>2</td><td>Email Kwame</td><td>complete</td></tr><tr><td>3</td><td>Buy domain</td><td>pending</td></tr></tbody></table></div></div><div class="tbl"><div class="tbl-cap">WHERE forgotten</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>title</th><th>status</th></tr></thead><tbody><tr class=g3><td>1</td><td>Learn sqlite3</td><td>complete</td></tr><tr class=g3><td>2</td><td>Email Kwame</td><td>complete</td></tr><tr class=g3><td>3</td><td>Buy domain</td><td>complete</td></tr></tbody></table></div></div></div>
+<h2>11.6 Delete: DELETE</h2><pre><span class="kw">def</span> <span class="fn">delete_task</span>(task_id):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"DELETE FROM tasks WHERE id = ?"</span>, (task_id,))
+        <span class="kw">return</span> cur.rowcount &gt; <span class="num">0</span>
+
+<span class="fn">delete_task</span>(<span class="num">3</span>)     <span class="cm"># True</span>
+<span class="fn">delete_task</span>(<span class="num">3</span>)     <span class="cm"># False   already gone</span></pre>
+<div class="callout warning"><div class="callout-title">Delete is permanent</div><div class="callout-body"><p>There is no undo once the transaction commits. For anything a user might regret deleting, many apps instead add a status such as <code>'archived'</code> and hide those rows (a &ldquo;soft delete&rdquo;). That is an UPDATE, not a DELETE.</p></div></div>
+<div class="callout warning"><div class="callout-title">Single-value tuples need a trailing comma</div><div class="callout-body"><p><code>(task_id)</code> is just brackets around a number. <code>(task_id,)</code> is a one-element tuple. The comma is what makes the tuple, and sqlite3 needs a sequence even for one parameter.</p></div></div>
+<h2>11.7 The finished module</h2><p>Everything together in one file, <code>tasks.py</code>, plus a short demo at the bottom:</p><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> contextlib <span class="kw">import</span> contextmanager
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+DB = <span class="str">"tasks.db"</span>
+
+@contextmanager
+<span class="kw">def</span> <span class="fn">connect</span>():
+    conn = sqlite3.<span class="fn">connect</span>(DB)
+    conn.row_factory = sqlite3.<span class="cls">Row</span>
+    <span class="kw">try</span>:
+        <span class="kw">with</span> conn:
+            yield conn
+    finally:
+        conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        conn.<span class="fn">execute</span>(<span class="str">"""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                title      TEXT NOT NULL,
+                status     TEXT NOT NULL DEFAULT 'pending',
+                priority   TEXT NOT NULL DEFAULT 'medium',
+                created_at TEXT NOT NULL
+            )"""</span>)
+
+<span class="kw">def</span> <span class="fn">add_task</span>(title, priority=<span class="str">"medium"</span>):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(
+            <span class="str">"INSERT INTO tasks (title, priority, created_at) VALUES (?, ?, ?)"</span>,
+            (title, priority, datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="str">"seconds"</span>)))
+        <span class="kw">return</span> cur.lastrowid
+
+<span class="kw">def</span> <span class="fn">get_task</span>(task_id):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        row = conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks WHERE id = ?"</span>, (task_id,)).<span class="fn">fetchone</span>()
+        <span class="kw">return</span> <span class="fn">dict</span>(row) <span class="kw">if</span> row <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="kw">def</span> <span class="fn">get_tasks</span>(status=<span class="kw">None</span>):
+    sql = <span class="str">"SELECT * FROM tasks"</span>
+    params = []
+    <span class="kw">if</span> status is <span class="kw">not</span> <span class="kw">None</span>:
+        sql += <span class="str">" WHERE status = ?"</span>
+        params.<span class="fn">append</span>(status)
+    sql += <span class="str">" ORDER BY id"</span>
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> conn.<span class="fn">execute</span>(sql, params)]
+
+<span class="kw">def</span> <span class="fn">update_status</span>(task_id, status):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"UPDATE tasks SET status = ? WHERE id = ?"</span>, (status, task_id))
+        <span class="kw">return</span> cur.rowcount &gt; <span class="num">0</span>
 
 <span class="kw">def</span> <span class="fn">delete_task</span>(task_id):
-    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
-        conn.<span class="fn">execute</span>(<span class="str">"DELETE FROM tasks WHERE id=?"</span>, (task_id,))
-<span class="cm"># note: (task_id,) -- trailing comma makes it a tuple</span></pre>
-<div class="callout warning"><div class="callout-title">Single-value tuples need a trailing comma</div>
-<div class="callout-body"><p><code>(task_id)</code> is just parentheses. <code>(task_id,)</code> is a one-element tuple. sqlite3 requires a sequence even for one parameter.</p></div></div>
-<div class="exercise-block"><div class="exercise-title">Exercises</div>
-<div class="question" data-correct="B"><div class="question-text">Q1 -- fetchone() returns what when no rows match?</div>
-<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Empty list []</li>
-<li class="option" data-value="B"><span class="option-key">B</span> None</li>
-<li class="option" data-value="C"><span class="option-key">C</span> Raises an exception</li></ul>
-<button class="reveal-btn" data-target="c11q1" data-show-label="Show" data-hide-label="Hide">Show</button>
-<div class="reveal-content" id="c11q1">fetchone() returns None on no rows. Always check: if row: ...</div>
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"DELETE FROM tasks WHERE id = ?"</span>, (task_id,))
+        <span class="kw">return</span> cur.rowcount &gt; <span class="num">0</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="fn">init_db</span>()
+    a = <span class="fn">add_task</span>(<span class="str">"Learn sqlite3"</span>, <span class="str">"high"</span>)
+    b = <span class="fn">add_task</span>(<span class="str">"Email Kwame"</span>)
+    c = <span class="fn">add_task</span>(<span class="str">"Buy domain"</span>, <span class="str">"low"</span>)
+    <span class="fn">update_status</span>(b, <span class="str">"complete"</span>)
+    <span class="fn">delete_task</span>(c)
+    <span class="fn">print</span>(<span class="fn">update_status</span>(<span class="num">99</span>, <span class="str">"complete"</span>))            <span class="cm"># no such task</span>
+    <span class="kw">for</span> t <span class="kw">in</span> <span class="fn">get_tasks</span>():
+        <span class="fn">print</span>(t[<span class="str">"id"</span>], t[<span class="str">"title"</span>], t[<span class="str">"status"</span>], t[<span class="str">"priority"</span>])</pre>
+<pre class="output">False
+1 Learn sqlite3 pending high
+2 Email Kwame complete medium</pre>
+<p><code>if __name__ == &quot;__main__&quot;:</code> means the demo runs only when you run <code>tasks.py</code> directly. When another file does <code>import tasks</code>, the demo is skipped. Run the file twice and you will see duplicate rows, because each run inserts fresh tasks. Delete <code>tasks.db</code> to start clean.</p><h2>11.8 Migrating your JSON data into SQLite</h2><p>If your task manager already stores tasks in a JSON file, you can move them in one batch. Adjust the key names to match your file:</p><pre><span class="kw">import</span> json
+
+<span class="kw">def</span> <span class="fn">migrate_json</span>(path):
+    <span class="kw">with</span> <span class="fn">open</span>(path, encoding=<span class="str">"utf-8"</span>) <span class="kw">as</span> f:
+        old_tasks = json.<span class="fn">load</span>(f)                  <span class="cm"># assumed: a list of dicts</span>
+
+    now = datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="str">"seconds"</span>)
+    rows = [
+        (t[<span class="str">"title"</span>], t.<span class="fn">get</span>(<span class="str">"priority"</span>, <span class="str">"medium"</span>), t.<span class="fn">get</span>(<span class="str">"status"</span>, <span class="str">"pending"</span>), t.<span class="fn">get</span>(<span class="str">"created_at"</span>, now))
+        <span class="kw">for</span> t <span class="kw">in</span> old_tasks
+    ]
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        conn.<span class="fn">executemany</span>(
+            <span class="str">"INSERT INTO tasks (title, priority, status, created_at) VALUES (?, ?, ?, ?)"</span>, rows)
+    <span class="kw">return</span> <span class="fn">len</span>(rows)
+
+<span class="fn">print</span>(<span class="fn">migrate_json</span>(<span class="str">"tasks.json"</span>), <span class="str">"tasks migrated"</span>)</pre>
+<p>Three habits that make migrations safe: <strong>keep the JSON file</strong> until you have checked the result (compare <code>len(get_tasks())</code> with the old count); run it <strong>once</strong>, since a second run inserts everything again; and rely on the <code>with</code> block, so if one row is bad (say a missing title) <em>nothing</em> is inserted, instead of half your data.</p><div class="exercise-block"><div class="exercise-title">Exercises</div>
+<div class="question" data-correct="B"><div class="question-text">Q1 &mdash; <code>fetchone()</code> returns what when no rows match?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> An empty list <code>[]</code></li><li class="option" data-value="B"><span class="option-key">B</span> <code>None</code></li><li class="option" data-value="C"><span class="option-key">C</span> It raises an exception</li></ul><button class="reveal-btn" data-target="c11q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c11q1">fetchone() gives back None when there is no row. Always check <code>if row is None</code> before indexing it. (<code>fetchall()</code> is the one that returns <code>[]</code>.)</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q2 &mdash; What does <code>conn.row_factory = sqlite3.Row</code> do?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Makes queries faster</li><li class="option" data-value="B"><span class="option-key">B</span> Lets you read columns by name as well as by position</li><li class="option" data-value="C"><span class="option-key">C</span> Converts results to JSON</li></ul><button class="reveal-btn" data-target="c11q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c11q2">Row objects support <code>row[&quot;title&quot;]</code> and <code>row[1]</code>. Convert with <code>dict(row)</code> when you need a plain dictionary or JSON.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q3 &mdash; You call <code>update_status(99, 'done')</code> and no task has id 99. What happens?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> sqlite3 raises an error</li><li class="option" data-value="B"><span class="option-key">B</span> Nothing is changed and no error is raised; <code>rowcount</code> is 0</li><li class="option" data-value="C"><span class="option-key">C</span> A new task with id 99 is created</li></ul><button class="reveal-btn" data-target="c11q3" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c11q3">UPDATE and DELETE on a non-matching WHERE simply affect zero rows. Check <code>cur.rowcount</code> if you need to know.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q4 &mdash; What does <code>cur.lastrowid</code> give you after an INSERT?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> The number of rows inserted</li><li class="option" data-value="B"><span class="option-key">B</span> The id SQLite assigned to the new row</li><li class="option" data-value="C"><span class="option-key">C</span> The total number of rows in the table</li></ul><button class="reveal-btn" data-target="c11q4" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c11q4">lastrowid is the primary key of the row you just inserted, which you need to refer to it later.</div></div>
 </div>
-<div class="question" data-correct="C"><div class="question-text">Q2 -- What does conn.row_factory = sqlite3.Row do?</div>
-<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Makes queries faster</li>
-<li class="option" data-value="B"><span class="option-key">B</span> Auto-converts to JSON</li>
-<li class="option" data-value="C"><span class="option-key">C</span> Lets you access columns by name instead of index</li></ul>
-<button class="reveal-btn" data-target="c11q2" data-show-label="Show" data-hide-label="Hide">Show</button>
-<div class="reveal-content" id="c11q2">Row objects support name access. dict(row) converts to a plain Python dict. Far cleaner than row[0], row[1].</div>
-</div></div>
-<div class="callout checkpoint"><div class="callout-title">Mini-Project: Task Manager Core</div><div class="callout-body">
-<p>Write four functions: add_task(title, priority), get_tasks(status=None), update_status(task_id, status), delete_task(task_id). This is the storage layer for your task manager migration.</p>
-<textarea class="checkpoint-input" style="min-height:140px;" placeholder="import sqlite3&#10;from datetime import datetime&#10;DB = 'tasks.db'&#10;&#10;def add_task(title, priority='medium'):&#10;    ..."></textarea>
-</div></div>
+<div class="callout checkpoint"><div class="callout-title">Mini-project: extend the storage layer</div><div class="callout-body"><p>Add to <code>tasks.py</code>:</p><p>1. <code>count_by_status()</code> returns a dict like <code>{'pending': 2, 'complete': 1}</code> (hint: GROUP BY from Chapter 9).<br>2. <code>rename_task(task_id, new_title)</code> returns True if a task was renamed, False if the id does not exist.<br>3. Stretch: <code>get_tasks</code> also accepts <code>priority=None</code> and filters by both when given.</p><textarea class="checkpoint-input" style="min-height:140px;" placeholder="def count_by_status():
+    ...
+
+def rename_task(task_id, new_title):
+    ..."></textarea><button class="reveal-btn" data-target="c11cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button><div class="reveal-content" id="c11cp"><pre><span class="kw">def</span> <span class="fn">count_by_status</span>():
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        rows = conn.<span class="fn">execute</span>(<span class="str">"SELECT status, COUNT(*) AS n FROM tasks GROUP BY status"</span>)
+        <span class="kw">return</span> {r[<span class="str">"status"</span>]: r[<span class="str">"n"</span>] <span class="kw">for</span> r <span class="kw">in</span> rows}
+
+<span class="kw">def</span> <span class="fn">rename_task</span>(task_id, new_title):
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        cur = conn.<span class="fn">execute</span>(<span class="str">"UPDATE tasks SET title = ? WHERE id = ?"</span>, (new_title, task_id))
+        <span class="kw">return</span> cur.rowcount &gt; <span class="num">0</span>
+
+<span class="cm"># Stretch: build the WHERE from a list of conditions</span>
+<span class="kw">def</span> <span class="fn">get_tasks</span>(status=<span class="kw">None</span>, priority=<span class="kw">None</span>):
+    sql, params, conds = <span class="str">"SELECT * FROM tasks"</span>, [], []
+    <span class="kw">if</span> status is <span class="kw">not</span> <span class="kw">None</span>:
+        conds.<span class="fn">append</span>(<span class="str">"status = ?"</span>);   params.<span class="fn">append</span>(status)
+    <span class="kw">if</span> priority is <span class="kw">not</span> <span class="kw">None</span>:
+        conds.<span class="fn">append</span>(<span class="str">"priority = ?"</span>); params.<span class="fn">append</span>(priority)
+    <span class="kw">if</span> conds:
+        sql += <span class="str">" WHERE "</span> + <span class="str">" AND "</span>.<span class="fn">join</span>(conds)       <span class="cm"># only YOUR text is joined here</span>
+    <span class="kw">with</span> <span class="fn">connect</span>() <span class="kw">as</span> conn:
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> conn.<span class="fn">execute</span>(sql + <span class="str">" ORDER BY id"</span>, params)]</pre>
+</div></div></div>
 
     <div class="chapter-nav"><a class="nav-btn" href="chapter-10.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 10: Intro to sqlite3</span></a><a class="nav-btn next" href="chapter-12.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 12: Parameterised Queries</span></a></div>
   </div></main>
