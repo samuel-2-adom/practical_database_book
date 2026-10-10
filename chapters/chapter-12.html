@@ -48,36 +48,58 @@
     </div>
   </nav>
   <main class="main"><div class="chapter-content">
-    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 12</div>
-    <h1 class="chapter-title">Parameterised Queries</h1>
-    <p class="chapter-lead">The question marks you have been using are not just convenient -- they are essential for security. This chapter explains SQL injection and why parameterised queries prevent it.</p>
-    
-<div class="objectives"><div class="objectives-title">What you will learn</div><ul>
-<li>What SQL injection is and why it matters</li>
-<li>How parameterised queries prevent it</li>
-<li>Named parameters -- cleaner syntax for many values</li>
-<li>Inserting many rows efficiently with executemany</li>
-</ul></div>
-<h2>12.1 The Problem -- SQL Injection</h2>
-<p>Imagine you build a search using string formatting:</p>
-<pre><span class="cm"># DANGEROUS -- never do this</span>
-user_input = <span class="str">"' OR '1'='1"</span>
-query = <span class="fn">f</span><span class="str">"SELECT * FROM users WHERE name = '{user_input}'"</span>
-<span class="cm"># becomes: SELECT * FROM users WHERE name = '' OR '1'='1'</span>
-<span class="cm"># returns ALL rows -- security disaster</span></pre>
-<p>An attacker can manipulate your SQL by injecting their own SQL through the input. This is called SQL injection -- one of the most common and dangerous web vulnerabilities.</p>
-<h2>12.2 The Solution -- Parameterised Queries</h2>
-<pre><span class="cm"># SAFE -- always do this</span>
-user_input = <span class="str">"' OR '1'='1"</span>
-conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM users WHERE name = ?"</span>, (user_input,))
-<span class="cm"># sqlite3 treats the input as a value, not SQL</span>
-<span class="cm"># returns zero rows -- correct behaviour</span></pre>
-<p>The <code>?</code> is a placeholder. sqlite3 sends the query and the parameters separately -- the database never mixes them, so injected SQL is impossible.</p>
-<div class="callout mistake"><div class="callout-title">Never build SQL with string formatting</div>
-<div class="callout-body"><p>Not f-strings, not % formatting, not + concatenation. Always use ? placeholders. No exceptions. This applies to all user input, file content, API data -- any external value.</p></div></div>
-<h2>12.3 Named Parameters -- Cleaner for Many Values</h2>
-<p>When you have many parameters, positional ? gets confusing. Use named parameters instead:</p>
-<pre><span class="kw">from</span> datetime <span class="kw">import</span> datetime
+    <div class="chapter-eyebrow">Part II &mdash; SQLite + Python &middot; Chapter 12</div>
+<h1 class="chapter-title">Parameterised Queries</h1>
+<p class="chapter-lead">The question marks you have been using are not just convenient: they are what keeps your database safe. See the attack work, then see the fix.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>Why SQL built from strings is dangerous, shown with real attacks</li><li>How <code>?</code> placeholders make injection impossible</li><li>What placeholders can and cannot do (table names, LIKE, IN)</li><li>Named parameters, and <code>executemany</code> for batches</li></ul></div>
+<h2>12.1 SQL is just text</h2><p>When you call <code>execute(&quot;...&quot;)</code>, the database receives <em>text</em> and works out which parts are commands (<code>SELECT</code>, <code>WHERE</code>, <code>OR</code>) and which are data (<code>'Samuel'</code>). If you build that text with an f-string, a user's input becomes part of the text, and the database cannot tell your code from their input.</p><div class="pair paths"><div class="path bad"><h4>Building with an f-string</h4><div class="stage">name = input()  <br>&rarr; user types: <b>x' OR '1'='1</b></div><div class="down">&darr;</div><div class="stage">text = f"... WHERE name = '{name}'"</div><div class="down">&darr;</div><div class="stage">... WHERE name = 'x' OR '1'='1'</div><div class="down">&darr;</div><div class="stage">Database parses this as <b>code</b>: the OR is a command</div><div class="down">&darr;</div><div class="stage">Every row comes back</div></div><div class="path good"><h4>Using a ? placeholder</h4><div class="stage">name = input()  <br>&rarr; user types: <b>x' OR '1'='1</b></div><div class="down">&darr;</div><div class="stage">sql = "... WHERE name = ?"  (fixed text)</div><div class="down">&darr;</div><div class="stage">params = (name,)  (sent separately)</div><div class="down">&darr;</div><div class="stage">Database <b>already parsed</b> the SQL. The input is only a value</div><div class="down">&darr;</div><div class="stage">Looks for a name literally equal to that odd string: no rows</div></div></div>
+<h2>12.2 Watch the attack work</h2><p>Here is a deliberately bad login function. Run it yourself in a scratch file:</p><pre><span class="kw">import</span> sqlite3
+
+conn = sqlite3.<span class="fn">connect</span>(<span class="str">":memory:"</span>)
+conn.<span class="fn">execute</span>(<span class="str">"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, password TEXT)"</span>)
+conn.<span class="fn">executemany</span>(<span class="str">"INSERT INTO users (name, password) VALUES (?, ?)"</span>,
+                 [(<span class="str">"ama"</span>, <span class="str">"pw1"</span>), (<span class="str">"kofi"</span>, <span class="str">"pw2"</span>)])
+
+<span class="kw">def</span> <span class="fn">bad_login</span>(name, password):                      <span class="cm"># DO NOT WRITE CODE LIKE THIS</span>
+    sql = <span class="str">f"SELECT * FROM users WHERE name = '{name}' AND password = '{password}'"</span>
+    <span class="fn">print</span>(<span class="str">"RUNNING:"</span>, sql)
+    <span class="kw">return</span> conn.<span class="fn">execute</span>(sql).<span class="fn">fetchone</span>()
+
+<span class="fn">bad_login</span>(<span class="str">"ama"</span>, <span class="str">"wrong"</span>)        <span class="cm"># None: correct, login refused</span></pre>
+<h3>Attack 1: bypass the password</h3><pre><span class="fn">bad_login</span>(<span class="str">"ama"</span>, <span class="str">"' OR '1'='1"</span>)
+<span class="cm"># RUNNING: SELECT * FROM users WHERE name = 'ama' AND password = '' OR '1'='1'</span>
+<span class="cm"># -&gt; (1, 'ama', 'pw1')   logged in without knowing the password!</span></pre>
+<p>Why it works: SQL evaluates <code>AND</code> before <code>OR</code>, so the condition reads <em>(name is ama AND password is empty) OR (1 equals 1)</em>. The second half is always true, so every row qualifies.</p><h3>Attack 2: comment out the password check</h3><pre><span class="fn">bad_login</span>(<span class="str">"ama' --"</span>, <span class="str">"anything"</span>)
+<span class="cm"># RUNNING: SELECT * FROM users WHERE name = 'ama' --' AND password = 'anything'</span>
+<span class="cm"># -&gt; (1, 'ama', 'pw1')</span></pre>
+<p><code>--</code> starts an SQL comment, so everything after it, including the password test, is ignored.</p><h3>Attack 3: read data you never meant to expose</h3><pre><span class="kw">def</span> <span class="fn">bad_search</span>(term):
+    <span class="kw">return</span> conn.<span class="fn">execute</span>(<span class="str">f"SELECT id, name, password FROM users WHERE name = '{term}'"</span>).<span class="fn">fetchall</span>()
+
+<span class="fn">bad_search</span>(<span class="str">"x' UNION SELECT id, name, password FROM users --"</span>)
+<span class="cm"># [(1, 'ama', 'pw1'), (2, 'kofi', 'pw2')]   every row, passwords included</span></pre>
+<div class="callout warning"><div class="callout-title">&ldquo;But DROP TABLE does not work in sqlite3?&rdquo;</div><div class="callout-body"><p>True: sqlite3's <code>execute</code> refuses two statements at once (<code>ProgrammingError: You can only execute one statement at a time</code>). Do not take comfort from that. Attacks 1 to 3 need only one statement, and other databases and drivers do allow stacked statements.</p></div></div>
+<h2>12.3 The fix: placeholders</h2><pre><span class="kw">def</span> <span class="fn">good_login</span>(name, password):
+    <span class="kw">return</span> conn.<span class="fn">execute</span>(
+        <span class="str">"SELECT * FROM users WHERE name = ? AND password = ?"</span>,
+        (name, password),
+    ).<span class="fn">fetchone</span>()
+
+<span class="fn">good_login</span>(<span class="str">"ama"</span>, <span class="str">"' OR '1'='1"</span>)        <span class="cm"># None   the attack is just a wrong password</span>
+<span class="fn">good_login</span>(<span class="str">"ama' --"</span>, <span class="str">"anything"</span>)       <span class="cm"># None   no user is literally named  ama' --</span></pre>
+<p>The <code>?</code> marks a slot. The SQL text is parsed first, with the slots empty, so its structure is locked in. Your values are sent <em>separately</em> and slotted in as pure data. No quote or <code>OR</code> inside them can change what the query means. The same code that was wide open in 12.2 is now safe.</p><div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Detail</th><th>Why it matters</th></tr></thead><tbody><tr><td>Parameters go in a tuple: <code>(name,)</code></td><td>A single value needs the trailing comma. <code>(name)</code> is just a string in brackets and will fail or misbehave.</td></tr><tr><td>One <code>?</code> per value</td><td>Count must match: otherwise <code>ProgrammingError: Incorrect number of bindings</code>.</td></tr><tr><td>Never put quotes around <code>?</code></td><td>Write <code>name = ?</code>, not <code>name = '?'</code>. sqlite3 handles the quoting.</td></tr><tr><td>Works for every statement</td><td>SELECT, INSERT, UPDATE and DELETE all take parameters the same way.</td></tr></tbody></table></div></div><div class="callout mistake"><div class="callout-title">No exceptions</div><div class="callout-body"><p>Not f-strings, not <code>%</code> formatting, not <code>+</code> concatenation, not <code>.format()</code>. This applies to <em>any</em> outside value: user input, file contents, API data, even values from your own database.</p></div></div>
+<h2>12.4 What a placeholder cannot do</h2><p>Placeholders stand in for <strong>values</strong> only. They cannot replace table or column names, because the database must know the structure before it runs the query:</p><pre>conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM ? WHERE id = 1"</span>, (<span class="str">"tasks"</span>,))      <span class="cm"># ERROR: a table name is not a value</span></pre>
+<p>If a column or table name must vary, choose it from a fixed list you control (a whitelist), never from raw input:</p><pre>ALLOWED_SORTS = {<span class="str">"title"</span>, <span class="str">"status"</span>, <span class="str">"priority"</span>, <span class="str">"created_at"</span>}
+
+<span class="kw">def</span> <span class="fn">list_tasks</span>(sort_by):
+    <span class="kw">if</span> sort_by <span class="kw">not</span> <span class="kw">in</span> ALLOWED_SORTS:
+        <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"bad sort column"</span>)
+    <span class="kw">return</span> conn.<span class="fn">execute</span>(<span class="str">f"SELECT * FROM tasks ORDER BY {sort_by}"</span>).<span class="fn">fetchall</span>()   <span class="cm"># safe: checked first</span></pre>
+<h3>LIKE searches</h3><p>The <code>%</code> wildcards belong <em>inside the value</em>, not the SQL:</p><pre>term = <span class="str">"sleep"</span>
+conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM notes WHERE title LIKE ?"</span>, (<span class="str">f"%{term}%"</span>,))</pre>
+<h3>IN lists</h3><p>You need one <code>?</code> per item. Generating the question marks is safe because you build only <code>?</code> characters, never user text:</p><pre>ids = [<span class="num">1</span>, <span class="num">3</span>, <span class="num">5</span>]
+marks = <span class="str">","</span>.<span class="fn">join</span>(<span class="str">"?"</span> * <span class="fn">len</span>(ids))            <span class="cm"># "?,?,?"</span>
+conn.<span class="fn">execute</span>(<span class="str">f"SELECT * FROM tasks WHERE id IN ({marks})"</span>, ids)</pre>
+<h2>12.5 Named parameters</h2><p>With many values, positional <code>?</code> gets hard to read. Name each slot with <code>:name</code> and pass a dictionary:</p><pre><span class="kw">from</span> datetime <span class="kw">import</span> datetime
 
 task = {
     <span class="str">"title"</span>:    <span class="str">"Learn parameterised queries"</span>,
@@ -87,50 +109,36 @@ task = {
 }
 
 conn.<span class="fn">execute</span>(
-    <span class="str">"INSERT INTO tasks (title, priority, status, created_at) VALUES (:title, :priority, :status, :created)"</span>,
-    task
+    <span class="str">"""INSERT INTO tasks (title, priority, status, created_at)
+       VALUES (:title, :priority, :status, :created)"""</span>,
+    task,
 )</pre>
-<h2>12.4 executemany -- Batch Inserts</h2>
-<pre>tasks = [
-    (<span class="str">"Task one"</span>,   <span class="str">"high"</span>,   <span class="str">"2024-01-01"</span>),
-    (<span class="str">"Task two"</span>,   <span class="str">"medium"</span>, <span class="str">"2024-01-02"</span>),
-    (<span class="str">"Task three"</span>, <span class="str">"low"</span>,    <span class="str">"2024-01-03"</span>),
+<h2>12.6 executemany: batch inserts</h2><pre>tasks = [
+    (<span class="str">"Task one"</span>,   <span class="str">"high"</span>,   <span class="str">"2026-01-01"</span>),
+    (<span class="str">"Task two"</span>,   <span class="str">"medium"</span>, <span class="str">"2026-01-02"</span>),
+    (<span class="str">"Task three"</span>, <span class="str">"low"</span>,    <span class="str">"2026-01-03"</span>),
 ]
 
 <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
     conn.<span class="fn">executemany</span>(
         <span class="str">"INSERT INTO tasks (title, priority, created_at) VALUES (?, ?, ?)"</span>,
-        tasks
-    )
-<span class="cm"># inserts all three rows in one efficient operation</span></pre>
+        tasks,
+    )</pre>
+<p>The SQL is parsed once and run once per tuple, which is faster than a Python loop and still fully safe.</p><div class="callout concept"><div class="callout-title">Your safety checklist</div><div class="callout-body"><p>Before every <code>execute</code>, ask: is any value from outside typed into the SQL string? If yes, replace it with <code>?</code> and move it into the tuple. If a <em>name</em> must vary, whitelist it.</p></div></div>
 <div class="exercise-block"><div class="exercise-title">Exercises</div>
-<div class="question" data-correct="B"><div class="question-text">Q1 -- What is SQL injection?</div>
-<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> A way to speed up SQL queries</li>
-<li class="option" data-value="B"><span class="option-key">B</span> Malicious SQL inserted through user input to manipulate database operations</li>
-<li class="option" data-value="C"><span class="option-key">C</span> A Python error type</li></ul>
-<button class="reveal-btn" data-target="c12q1" data-show-label="Show" data-hide-label="Hide">Show</button>
-<div class="reveal-content" id="c12q1">SQL injection occurs when user input is concatenated directly into a SQL string, letting attackers inject their own SQL. Parameterised queries prevent it by keeping values separate from the query structure.</div>
+<div class="question" data-correct="B"><div class="question-text">Q1 &mdash; What is SQL injection?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> A way to speed up queries</li><li class="option" data-value="B"><span class="option-key">B</span> Malicious SQL inserted through input that gets mixed into your query text</li><li class="option" data-value="C"><span class="option-key">C</span> A Python error type</li></ul><button class="reveal-btn" data-target="c12q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c12q1">It happens when input is concatenated into the SQL string, so the database treats the attacker's text as code. Placeholders keep values and SQL separate.</div></div>
+<div class="question" data-correct="C"><div class="question-text">Q2 &mdash; Which is the safe way to include <code>task_id</code>?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> conn.execute(f"SELECT * FROM tasks WHERE id = {task_id}")</li><li class="option" data-value="B"><span class="option-key">B</span> conn.execute("SELECT * FROM tasks WHERE id = " + str(task_id))</li><li class="option" data-value="C"><span class="option-key">C</span> conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))</li></ul><button class="reveal-btn" data-target="c12q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c12q2">Only C uses a placeholder. A and B build the SQL text from the value, which is the injection pattern.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q3 &mdash; You want users to choose which column to sort by. Can you use <code>ORDER BY ?</code>?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Yes, placeholders work for any part of the query</li><li class="option" data-value="B"><span class="option-key">B</span> No: placeholders are for values, so check the column against a whitelist instead</li><li class="option" data-value="C"><span class="option-key">C</span> Yes, but only with named parameters</li></ul><button class="reveal-btn" data-target="c12q3" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c12q3">Placeholders can only stand for values, not identifiers like column names. Validate the name against a fixed set, then put it in the SQL.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q4 &mdash; Why does <code>conn.execute(sql, (name))</code> misbehave?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> It is fine</li><li class="option" data-value="B"><span class="option-key">B</span> <code>(name)</code> is not a tuple: you need <code>(name,)</code></li><li class="option" data-value="C"><span class="option-key">C</span> execute never accepts parameters</li></ul><button class="reveal-btn" data-target="c12q4" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c12q4">Brackets alone do not make a tuple; the comma does. Without it Python passes a plain string and sqlite3 treats each character as a separate parameter.</div></div>
 </div>
-<div class="question" data-correct="C"><div class="question-text">Q2 -- What is the safe way to include a variable in a SQL query?</div>
-<ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> conn.execute(f"SELECT * FROM tasks WHERE id = {task_id}")</li>
-<li class="option" data-value="B"><span class="option-key">B</span> conn.execute("SELECT * FROM tasks WHERE id = " + str(task_id))</li>
-<li class="option" data-value="C"><span class="option-key">C</span> conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))</li></ul>
-<button class="reveal-btn" data-target="c12q2" data-show-label="Show" data-hide-label="Hide">Show</button>
-<div class="reveal-content" id="c12q2">Only option C uses a parameterised query. A and B build SQL strings through concatenation -- both are vulnerable to SQL injection.</div>
-</div></div>
-<div class="callout checkpoint"><div class="callout-title">Checkpoint</div><div class="callout-body">
-<p>Rewrite this unsafe function using parameterised queries:<br>
-<code>def find_task(name): conn.execute(f"SELECT * FROM tasks WHERE title = '{name}'")</code></p>
-<textarea class="checkpoint-input" placeholder="def find_task(name):&#10;    with sqlite3.connect('tasks.db') as conn:&#10;        ..."></textarea>
-<button class="reveal-btn" data-target="c12cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button>
-<div class="reveal-content" id="c12cp"><pre><span class="kw">def</span> <span class="fn">find_task</span>(name):
+<div class="callout checkpoint"><div class="callout-title">Checkpoint</div><div class="callout-body"><p>Rewrite this unsafe function so it is safe, and make it return a list of dicts:<br><code>def find_task(name): conn.execute(f&quot;SELECT * FROM tasks WHERE title = '{name}'&quot;)</code></p><textarea class="checkpoint-input" style="min-height:140px;" placeholder="def find_task(name):
+    with sqlite3.connect(&#x27;tasks.db&#x27;) as conn:
+        ..."></textarea><button class="reveal-btn" data-target="c12cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button><div class="reveal-content" id="c12cp"><pre><span class="kw">def</span> <span class="fn">find_task</span>(name):
     <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
         conn.row_factory = sqlite3.<span class="cls">Row</span>
-        cur = conn.<span class="fn">execute</span>(
-            <span class="str">"SELECT * FROM tasks WHERE title = ?"</span>, (name,)
-        )
-        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]</pre></div>
-</div></div>
+        cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks WHERE title = ?"</span>, (name,))
+        <span class="kw">return</span> [<span class="fn">dict</span>(r) <span class="kw">for</span> r <span class="kw">in</span> cur.<span class="fn">fetchall</span>()]</pre>
+</div></div></div>
 
     <div class="chapter-nav"><a class="nav-btn" href="chapter-11.html"><span class="nav-btn-dir">&#8592; Previous</span><span class="nav-btn-title">Chapter 11: CRUD with sqlite3</span></a><a class="nav-btn next" href="chapter-13.html"><span class="nav-btn-dir">Next &#8594;</span><span class="nav-btn-title">Chapter 13: Transactions and Errors</span></a></div>
   </div></main>

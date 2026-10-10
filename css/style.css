@@ -548,3 +548,60 @@ pre:hover .copy-btn { opacity: 1; }
   .menu-btn { display: flex; align-items: center; justify-content: center; }
   .chapter-title { font-size: 1.7rem; }
 }
+
+
+/* ============================================================
+   UPGRADE v2 -- diagrams that line up
+   ============================================================ */
+
+/* ROOT-CAUSE FIX: .diagram never had white-space:pre, so the browser collapsed
+   newlines/spaces and every ASCII box fell apart. This fixes all old diagrams. */
+.diagram { white-space: pre; font-variant-ligatures: none; tab-size: 4; }
+
+.tbl-scroll { overflow-x: auto; }
+.single { margin: 20px 0; max-width: 560px; }
+.single .data-table, .pair .data-table { margin: 0; }
+
+/* side-by-side tables with an arrow between them */
+.pair { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; margin: 24px 0; }
+.pair .tbl { flex: 1 1 240px; min-width: 0; }
+.pair .arrow { align-self: center; font-family: var(--font-mono); font-size: 24px; color: var(--accent); flex: 0 0 auto; }
+@media (max-width: 700px) { .pair .arrow { transform: rotate(90deg); flex-basis: 100%; text-align: center; height: 28px; } }
+
+.tbl-cap { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.data-table td.r, .data-table th.r { text-align: right; }
+
+/* colour-coded rows: same colour = same group / same match */
+.data-table tr.g1 td { background: rgba(79,142,247,.17); }
+.data-table tr.g2 td { background: rgba(62,207,142,.17); }
+.data-table tr.g3 td { background: rgba(247,201,72,.17); }
+.data-table tr.g4 td { background: rgba(167,139,250,.17); }
+.data-table tr.dim td { opacity: .45; text-decoration: line-through; }
+.data-table tr.g1 td:first-child { box-shadow: inset 4px 0 0 var(--blue); }
+.data-table tr.g2 td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+.data-table tr.g3 td:first-child { box-shadow: inset 4px 0 0 var(--yellow); }
+.data-table tr.g4 td:first-child { box-shadow: inset 4px 0 0 var(--purple); }
+.data-table td { color: var(--text); }
+
+/* numbered step boxes (replace ASCII flow diagrams) */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 24px 0; }
+.flow-step { background: var(--bg-surface); border: 1px solid var(--border); border-top: 3px solid var(--accent);
+  border-radius: var(--radius); padding: 12px 14px; font-family: var(--font-sans); font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.flow-step b { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .05em; color: var(--accent); margin-bottom: 6px; font-weight: 500; }
+
+/* bad path vs good path */
+.paths { align-items: stretch; }
+.path { flex: 1 1 260px; min-width: 0; border: 1px solid; border-radius: var(--radius); padding: 14px 16px; }
+.path.bad  { border-color: var(--red);    background: var(--red-soft); }
+.path.good { border-color: var(--accent); background: var(--accent-soft); }
+.path h4 { font-family: var(--font-sans); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; font-weight: 500; }
+.path.bad h4 { color: var(--red); }
+.path.good h4 { color: var(--accent); }
+.path .stage { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 8px 10px; word-break: break-word; color: var(--text); }
+.path .down { text-align: center; color: var(--text-dim); font-size: 13px; margin: 3px 0; }
+
+.legend { font-family: var(--font-sans); font-size: 13px; color: var(--text-muted); margin: -8px 0 20px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: baseline; }
+.dot:first-child { margin-left: 0; }
+.dot.g1 { background: var(--blue); } .dot.g2 { background: var(--accent); } .dot.g3 { background: var(--yellow); } .dot.g4 { background: var(--purple); }

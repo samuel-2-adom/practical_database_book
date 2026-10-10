@@ -50,97 +50,124 @@
     </div>
   </nav>
   <main class="main"><div class="chapter-content">
-    <div class="chapter-eyebrow">Part II -- SQLite + Python -- Chapter 10</div>
-    <h1 class="chapter-title">Intro to sqlite3</h1>
-    <p class="chapter-lead">Part II starts here. You already know SQL -- now use it from Python. sqlite3 is built in, nothing to install.</p>
+    <div class="chapter-eyebrow">Part II &mdash; SQLite + Python &middot; Chapter 10</div>
+<h1 class="chapter-title">Intro to sqlite3</h1>
+<p class="chapter-lead">Part II starts here. You already know SQL; now you run it from Python. This chapter slows down on every moving part (connection, cursor, commit, fetch and <code>with</code>) so none of it feels like magic.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>What a connection, a cursor and a transaction each are</li><li>What <code>execute</code>, <code>fetchall</code> and <code>commit</code> actually do (and when you need each)</li><li>Why changes disappear if you forget to commit</li><li>What <code>with sqlite3.connect()</code> really does, and what it does not do</li><li>A clean, safe pattern for every database function you write</li></ul></div>
+<div class="callout sqlite"><div class="callout-title">SQLite: no setup needed</div><div class="callout-body"><p><code>sqlite3</code> ships with Python. No install, no server. The whole database is one <code>.db</code> file that is created automatically the first time you connect.</p></div></div>
+<h2>10.1 The big picture</h2><p>Think of the database file as a library. You do not walk around the shelves yourself; you go through a process:</p><div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Library</th><th>sqlite3</th><th>Meaning</th></tr></thead><tbody><tr><td>The library building</td><td>the .db file</td><td>where the data lives permanently</td></tr><tr><td>Walking in the door</td><td>connection</td><td>your open session with that file</td></tr><tr><td>The librarian at the desk</td><td>cursor</td><td>takes your requests and holds the books you asked for</td></tr><tr><td>Your request slip</td><td>execute(&quot;SQL&quot;)</td><td>one SQL statement</td></tr><tr><td>Taking the books to your table</td><td>fetchall()</td><td>move result rows into Python</td></tr><tr><td>Signing the changes into the ledger</td><td>commit()</td><td>make your edits permanent</td></tr></tbody></table></div></div><div class="flow"><div class="flow-step"><b>1 &middot; connect</b>Open the file. You get a <em>connection</em>.</div><div class="flow-step"><b>2 &middot; cursor</b>Create the object that runs SQL and holds results.</div><div class="flow-step"><b>3 &middot; execute</b>Send one SQL statement.</div><div class="flow-step"><b>4 &middot; fetch <em>or</em> commit</b>Reading? fetch the rows. Writing? commit the change.</div><div class="flow-step"><b>5 &middot; close</b>Hang up. Release the file.</div></div>
+<p>The key idea: <strong>reading and writing finish differently.</strong></p><div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Statement</th><th>execute</th><th>fetch</th><th>commit</th></tr></thead><tbody><tr><td>SELECT</td><td>yes</td><td>yes: that is how you get the rows</td><td>no: nothing changed</td></tr><tr><td>INSERT / UPDATE / DELETE</td><td>yes</td><td>no: nothing to get back</td><td>yes: or the change is lost</td></tr><tr><td>CREATE TABLE</td><td>yes</td><td>no</td><td>not needed in practice, harmless</td></tr></tbody></table></div></div><h2>10.2 Connecting</h2><pre><span class="kw">import</span> sqlite3
 
-    <div class="objectives"><div class="objectives-title">What you will learn</div><ul>
-    <li>How sqlite3 connects Python to a database</li>
-    <li>The connection, cursor, execute, commit workflow</li>
-    <li>Creating a table from Python</li>
-    <li>Context managers -- the clean way</li>
-    </ul></div>
-
-    <div class="callout sqlite"><div class="callout-title">SQLite -- no setup needed</div>
-    <div class="callout-body"><p>sqlite3 is in Python standard library. No pip install, no server. Database is a single .db file created automatically on connect.</p></div></div>
-
-    <h2>10.1 Connecting</h2>
-    <pre><span class="kw">import</span> sqlite3
-
-conn   = sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>)  <span class="cm"># creates file if missing</span>
-cursor = conn.<span class="fn">cursor</span>()
+conn = sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>)    <span class="cm"># creates the file if it does not exist</span>
 conn.<span class="fn">close</span>()
 
-conn = sqlite3.<span class="fn">connect</span>(<span class="str">":memory:"</span>)   <span class="cm"># in-memory, gone on exit</span></pre>
+conn = sqlite3.<span class="fn">connect</span>(<span class="str">":memory:"</span>)    <span class="cm"># a throwaway database in RAM, gone on exit</span></pre>
+<div class="callout tip"><div class="callout-title">Where did my .db file go?</div><div class="callout-body"><p>A bare name like <code>&quot;tasks.db&quot;</code> is created in the folder you <em>ran Python from</em>, not necessarily where the script lives. If you cannot find your file, print <code>os.getcwd()</code>. Use <code>&quot;:memory:&quot;</code> for experiments you do not want to keep.</p></div></div>
+<h2>10.3 The cursor</h2><p>A <strong>cursor</strong> is the object that sends SQL to the database and holds the rows that come back. You create it from the connection:</p><pre>conn = sqlite3.<span class="fn">connect</span>(<span class="str">":memory:"</span>)
+cursor = conn.<span class="fn">cursor</span>()
+cursor.<span class="fn">execute</span>(<span class="str">"CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL)"</span>)
+cursor.<span class="fn">execute</span>(<span class="str">"INSERT INTO tasks (title, status) VALUES ('Write report', 'pending')"</span>)</pre>
+<p>Because creating a cursor every time is repetitive, the connection has a shortcut: <code>conn.execute(...)</code> makes a cursor behind the scenes, runs your SQL, and hands the cursor back. These two lines do the same thing:</p><pre>conn.<span class="fn">cursor</span>().<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks"</span>)
+conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks"</span>)           <span class="cm"># shortcut, used from now on</span></pre>
+<h2>10.4 Reading: execute, then fetch</h2><p><code>execute(&quot;SELECT ...&quot;)</code> runs the query, but the rows are <em>waiting inside the cursor</em>. They are not in your variables yet. A fetch method moves them into Python:</p><pre>conn.<span class="fn">executemany</span>(<span class="str">"INSERT INTO tasks (title, status) VALUES (?, ?)"</span>,
+                 [(<span class="str">"Write report"</span>, <span class="str">"pending"</span>), (<span class="str">"Email Kwame"</span>, <span class="str">"complete"</span>)])
 
-    <h2>10.2 Core Workflow</h2>
-    <div class="diagram">sqlite3.connect("file.db")  --&gt;  connection
-conn.cursor()               --&gt;  cursor
-cursor.execute("SQL")       --&gt;  run statement
-conn.commit()               --&gt;  save changes
-cursor.fetchall()           --&gt;  get SELECT results
-conn.close()                --&gt;  clean up</div>
+cur = conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, status FROM tasks"</span>)
+rows = cur.<span class="fn">fetchall</span>()
+<span class="fn">print</span>(rows)
+<span class="cm"># [(1, 'Write report', 'pending'), (2, 'Email Kwame', 'complete')]</span></pre>
+<div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Method</th><th>What you get</th></tr></thead><tbody><tr><td>fetchall()</td><td>a list of <em>all</em> remaining rows; each row is a tuple</td></tr><tr><td>fetchone()</td><td>the next single row (a tuple), or None when finished</td></tr><tr><td>fetchmany(n)</td><td>up to n rows</td></tr><tr><td>for row in cur:</td><td>loops through rows one at a time without building a big list</td></tr></tbody></table></div></div><div class="callout warning"><div class="callout-title">A cursor is used up once you read it</div><div class="callout-body"><p>Rows are handed out once. After <code>cur.fetchall()</code>, calling <code>cur.fetchall()</code> again returns <code>[]</code>. If you need the data twice, store it in a variable the first time.</p></div></div>
+<p>Rows are plain tuples, so you read them by position (<code>row[1]</code> is the title). In Chapter 11 you will meet <code>sqlite3.Row</code>, which lets you use column names instead.</p><h2>10.5 Writing: transactions and commit</h2><p>When you run INSERT, UPDATE or DELETE, SQLite does not write straight to the file. It opens a <strong>transaction</strong>: a private draft that only <em>your</em> connection can see. <code>commit()</code> publishes the draft to the file. Until then, the change is not saved and nobody else sees it.</p><p>You can watch it happen with two connections to the same file:</p><pre>a = sqlite3.<span class="fn">connect</span>(<span class="str">"demo.db"</span>)
+b = sqlite3.<span class="fn">connect</span>(<span class="str">"demo.db"</span>)          <span class="cm"># a second, independent connection</span>
+a.<span class="fn">execute</span>(<span class="str">"CREATE TABLE IF NOT EXISTS n (t TEXT)"</span>)
+a.<span class="fn">commit</span>()
 
-    <h2>10.3 Creating a Table</h2>
-    <pre><span class="kw">import</span> sqlite3
+a.<span class="fn">execute</span>(<span class="str">"INSERT INTO n VALUES ('hi')"</span>)
+<span class="fn">print</span>(a.<span class="fn">execute</span>(<span class="str">"SELECT COUNT(*) FROM n"</span>).<span class="fn">fetchone</span>())   <span class="cm"># (1,)  a sees its own draft</span>
+<span class="fn">print</span>(b.<span class="fn">execute</span>(<span class="str">"SELECT COUNT(*) FROM n"</span>).<span class="fn">fetchone</span>())   <span class="cm"># (0,)  b sees the file: nothing yet</span>
 
-<span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
-    conn.<span class="fn">execute</span>(
-        <span class="str">"CREATE TABLE IF NOT EXISTS tasks ("</span>
-        <span class="str">"id INTEGER PRIMARY KEY, "</span>
-        <span class="str">"title TEXT NOT NULL, "</span>
-        <span class="str">"status TEXT NOT NULL DEFAULT 'pending', "</span>
-        <span class="str">"priority TEXT NOT NULL DEFAULT 'medium', "</span>
-        <span class="str">"created_at TEXT NOT NULL)"</span>
-    )</pre>
-
-    <div class="callout tip"><div class="callout-title">Always use: with sqlite3.connect() as conn</div>
-    <div class="callout-body"><p>Closes automatically, commits on success, rolls back on error. Use it for everything.</p></div></div>
-
-    <h2>10.4 Complete Setup Function</h2>
-    <pre><span class="kw">import</span> sqlite3
+a.<span class="fn">commit</span>()
+<span class="fn">print</span>(b.<span class="fn">execute</span>(<span class="str">"SELECT COUNT(*) FROM n"</span>).<span class="fn">fetchone</span>())   <span class="cm"># (1,)  now it is published</span></pre>
+<div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Step</th><th>Your connection (a) sees</th><th>The file / other connections see</th></tr></thead><tbody><tr><td>a.execute(INSERT ...)</td><td>1 row (your draft)</td><td>0 rows</td></tr><tr><td>a.commit()</td><td>1 row</td><td>1 row: saved</td></tr><tr><td>a.rollback() instead of commit</td><td>0 rows: draft thrown away</td><td>0 rows</td></tr></tbody></table></div></div><div class="callout mistake"><div class="callout-title">No commit = no save</div><div class="callout-body"><p>If your program ends, or the connection closes, while a transaction is still open, SQLite throws the draft away. This is the most common &ldquo;my data vanished&rdquo; bug. The fix is a commit, or letting <code>with</code> do it for you (next section).</p></div></div>
+<h2>10.6 What <code>with</code> actually does</h2><pre><span class="kw">with</span> sqlite3.<span class="fn">connect</span>(<span class="str">"tasks.db"</span>) <span class="kw">as</span> conn:
+    conn.<span class="fn">execute</span>(<span class="str">"INSERT INTO tasks (title, status) VALUES ('Plan sprint', 'pending')"</span>)
+<span class="cm"># leaving the block: commit() if no error, rollback() if an exception happened</span></pre>
+<p>So with <code>with</code>, you <strong>do not write <code>conn.commit()</code></strong> yourself. The block commits when it ends normally and rolls back everything if an error is raised, so you never save half a job.</p><div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th></th><th>Plain connection</th><th>with sqlite3.connect() as conn</th></tr></thead><tbody><tr><td>commit</td><td>you must call conn.commit()</td><td>automatic on success</td></tr><tr><td>rollback on error</td><td>you must call conn.rollback()</td><td>automatic</td></tr><tr><td>execute / fetchall</td><td>needed</td><td>still needed: for reading you still use them</td></tr><tr><td>close the connection</td><td>you must call conn.close()</td><td><strong>NOT done</strong>: with only handles the transaction</td></tr></tbody></table></div></div><div class="callout warning"><div class="callout-title">with does not close the connection</div><div class="callout-body"><p>It is easy to assume it does, but <code>with</code> on a sqlite3 connection only commits or rolls back. To also close, wrap it with <code>contextlib.closing</code>, as in the next section.</p></div></div>
+<h2>10.7 The safe pattern</h2><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> contextlib <span class="kw">import</span> closing
 
 DB = <span class="str">"tasks.db"</span>
 
 <span class="kw">def</span> <span class="fn">init_db</span>():
-    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
-        conn.<span class="fn">execute</span>(
-            <span class="str">"CREATE TABLE IF NOT EXISTS tasks ("</span>
-            <span class="str">"id INTEGER PRIMARY KEY, title TEXT NOT NULL, "</span>
-            <span class="str">"status TEXT NOT NULL DEFAULT 'pending', "</span>
-            <span class="str">"priority TEXT NOT NULL DEFAULT 'medium', "</span>
-            <span class="str">"created_at TEXT NOT NULL)"</span>
-        )
-    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Ready: {DB}"</span>)
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:   <span class="cm"># outer: closes the connection</span>
+        <span class="kw">with</span> conn:                               <span class="cm"># inner: commit / rollback</span>
+            conn.<span class="fn">execute</span>(<span class="str">"""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id         INTEGER PRIMARY KEY,
+                    title      TEXT NOT NULL,
+                    status     TEXT NOT NULL DEFAULT 'pending',
+                    priority   TEXT NOT NULL DEFAULT 'medium',
+                    created_at TEXT NOT NULL
+                )"""</span>)
+    <span class="fn">print</span>(<span class="str">f"Ready: {DB}"</span>)
 
 <span class="fn">init_db</span>()</pre>
+<p>Read it from the inside out: the inner <code>with conn</code> guards the transaction, the outer <code>closing(...)</code> guarantees the connection is shut. Use this shape for every database function from now on.</p><h3>Two mistakes worth recognising</h3><pre><span class="cm"># MISTAKE 1: writing AFTER the with block has already committed</span>
+<span class="kw">def</span> <span class="fn">get_db</span>():
+    <span class="kw">with</span> sqlite3.<span class="fn">connect</span>(DB) <span class="kw">as</span> conn:
+        cursor = conn.<span class="fn">cursor</span>()
+        <span class="kw">return</span> cursor            <span class="cm"># with ends here: commit happens NOW</span>
 
-    <div class="exercise-block"><div class="exercise-title">Exercises</div>
-    <div class="question" data-correct="B">
-    <div class="question-text">Q1 -- What happens when you connect to a .db file that does not exist?</div>
-    <ul class="options">
-    <li class="option" data-value="A"><span class="option-key">A</span> FileNotFoundError is raised</li>
-    <li class="option" data-value="B"><span class="option-key">B</span> SQLite creates the file automatically</li>
-    <li class="option" data-value="C"><span class="option-key">C</span> Returns None</li>
-    </ul>
-    <button class="reveal-btn" data-target="c10q1" data-show-label="Show" data-hide-label="Hide">Show explanation</button>
-    <div class="reveal-content" id="c10q1">SQLite creates the .db file automatically. No manual file creation needed -- just connect and start working.</div>
-    </div>
-    <div class="question" data-correct="C">
-    <div class="question-text">Q2 -- What is a cursor?</div>
-    <ul class="options">
-    <li class="option" data-value="A"><span class="option-key">A</span> A pointer to one specific row</li>
-    <li class="option" data-value="B"><span class="option-key">B</span> The database connection itself</li>
-    <li class="option" data-value="C"><span class="option-key">C</span> An object that executes SQL and retrieves results</li>
-    </ul>
-    <button class="reveal-btn" data-target="c10q2" data-show-label="Show" data-hide-label="Hide">Show explanation</button>
-    <div class="reveal-content" id="c10q2">cursor.execute() runs SQL and cursor.fetchall() gets results. Separate from the connection object.</div>
-    </div></div>
+cur = <span class="fn">get_db</span>()
+cur.<span class="fn">execute</span>(<span class="str">"INSERT INTO tasks (title, created_at) VALUES ('x', 'today')"</span>)
+<span class="cm"># This INSERT starts a NEW transaction that nobody commits -&gt; lost on exit.</span>
 
-    <div class="callout checkpoint"><div class="callout-title">Try It</div><div class="callout-body">
-    <p>Write init_db() that creates a notes table with: id, title, content, created_at. Run it and verify the .db file appears in your folder.</p>
-    <textarea class="checkpoint-input" placeholder="import sqlite3&#10;&#10;def init_db():&#10;    with sqlite3.connect('notes.db') as conn:&#10;        conn.execute(...)"></textarea>
-    </div></div>
+<span class="cm"># MISTAKE 2: returning a cursor instead of the data</span>
+<span class="cm"># If the connection is closed or goes away, the cursor is useless.</span>
+<span class="cm"># Fetch inside the function and return a plain list instead:</span>
+<span class="kw">def</span> <span class="fn">all_tasks</span>():
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:
+        <span class="kw">return</span> conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM tasks"</span>).<span class="fn">fetchall</span>()</pre>
+<p>The rule behind both: <strong>do all your SQL work inside the function that owns the connection</strong>, and hand back data, not cursors or connections.</p><div class="exercise-block"><div class="exercise-title">Exercises</div>
+<div class="question" data-correct="B"><div class="question-text">Q1 &mdash; What happens when you connect to a .db file that does not exist?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> FileNotFoundError is raised</li><li class="option" data-value="B"><span class="option-key">B</span> SQLite creates the file automatically</li><li class="option" data-value="C"><span class="option-key">C</span> It returns None</li></ul><button class="reveal-btn" data-target="c10q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c10q1">sqlite3.connect creates the file for you. This is why a typo in the filename silently gives you a new, empty database.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q2 &mdash; Which statement needs <code>fetchall()</code> to see its results?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> INSERT</li><li class="option" data-value="B"><span class="option-key">B</span> SELECT</li><li class="option" data-value="C"><span class="option-key">C</span> DELETE</li></ul><button class="reveal-btn" data-target="c10q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c10q2">Only SELECT returns rows. They wait inside the cursor until you fetch them. INSERT, UPDATE and DELETE return nothing to fetch; they need a commit instead.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q3 &mdash; You run an INSERT and the program ends without a commit. What happens to the row?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> It is saved anyway</li><li class="option" data-value="B"><span class="option-key">B</span> It is lost: the open transaction is discarded</li><li class="option" data-value="C"><span class="option-key">C</span> SQLite raises an error</li></ul><button class="reveal-btn" data-target="c10q3" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c10q3">Changes live in an open transaction until commit(). No commit means the draft is discarded when the connection goes away.</div></div>
+<div class="question" data-correct="A"><div class="question-text">Q4 &mdash; What does <code>with sqlite3.connect(DB) as conn:</code> do when the block finishes without error?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> Commits the transaction (but does not close the connection)</li><li class="option" data-value="B"><span class="option-key">B</span> Closes the connection only</li><li class="option" data-value="C"><span class="option-key">C</span> Commits and closes the connection</li></ul><button class="reveal-btn" data-target="c10q4" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c10q4">The with block manages the <em>transaction</em>: commit on success, rollback on exception. It does not close the connection; use contextlib.closing for that.</div></div>
+</div>
+<div class="callout checkpoint"><div class="callout-title">Try it</div><div class="callout-body"><p>Write <code>init_db()</code> that creates a <code>notes</code> table (id, title, content, created_at) using the safe pattern. Then write <code>add_note(title, content)</code> and <code>get_notes()</code>. Run them and confirm the rows are still there after you restart Python.</p><textarea class="checkpoint-input" style="min-height:140px;" placeholder="import sqlite3
+from contextlib import closing
+
+def init_db(): ..."></textarea><button class="reveal-btn" data-target="c10cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button><div class="reveal-content" id="c10cp"><pre><span class="kw">import</span> sqlite3
+<span class="kw">from</span> contextlib <span class="kw">import</span> closing
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+DB = <span class="str">"notes.db"</span>
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn:
+            conn.<span class="fn">execute</span>(<span class="str">"""
+                CREATE TABLE IF NOT EXISTS notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TEXT NOT NULL)"""</span>)
+
+<span class="kw">def</span> <span class="fn">add_note</span>(title, content):
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn:
+            conn.<span class="fn">execute</span>(
+                <span class="str">"INSERT INTO notes (title, content, created_at) VALUES (?, ?, ?)"</span>,
+                (title, content, datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>()))
+
+<span class="kw">def</span> <span class="fn">get_notes</span>():
+    <span class="kw">with</span> <span class="fn">closing</span>(sqlite3.<span class="fn">connect</span>(DB)) <span class="kw">as</span> conn:
+        <span class="kw">return</span> conn.<span class="fn">execute</span>(<span class="str">"SELECT id, title, content FROM notes"</span>).<span class="fn">fetchall</span>()
+
+<span class="fn">init_db</span>()
+<span class="fn">add_note</span>(<span class="str">"Sleep"</span>, <span class="str">"Sleep is good for the soul"</span>)
+<span class="fn">print</span>(<span class="fn">get_notes</span>())</pre>
+</div></div></div>
 
     <div class="chapter-nav">
       <a class="nav-btn" href="chapter-09.html"><span class="nav-btn-dir">Previous</span><span class="nav-btn-title">Chapter 9: Aggregates and Grouping</span></a>

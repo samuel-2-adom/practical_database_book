@@ -50,106 +50,131 @@
     </div>
   </nav>
   <main class="main"><div class="chapter-content">
-    <div class="chapter-eyebrow">Part I — SQL Fundamentals · Chapter 9</div>
-    <h1 class="chapter-title">Aggregates & Grouping</h1>
-    <p class="chapter-lead">Count, sum, average, find the max and min — and group results by category. This rounds out Part I and makes your queries genuinely useful for reporting.</p>
-    
-<div class="objectives"><div class="objectives-title">🎯 What you'll learn</div><ul>
-<li>Aggregate functions: COUNT, SUM, AVG, MIN, MAX</li>
-<li>GROUP BY — aggregating per category</li>
-<li>HAVING — filtering aggregated results</li>
-<li>Combining aggregates with JOINs</li>
-</ul></div>
-<h2>9.1 Aggregate Functions</h2>
-<p>Aggregate functions collapse multiple rows into a single value:</p>
-<pre><span class="sql-kw">SELECT COUNT</span>(*)          <span class="sql-kw">FROM</span> tasks;              <span class="cm">-- total rows</span>
-<span class="sql-kw">SELECT COUNT</span>(due_date)   <span class="sql-kw">FROM</span> tasks;              <span class="cm">-- non-NULL due dates</span>
-<span class="sql-kw">SELECT SUM</span>(amount)       <span class="sql-kw">FROM</span> expenses;           <span class="cm">-- total amount</span>
-<span class="sql-kw">SELECT AVG</span>(amount)       <span class="sql-kw">FROM</span> expenses;           <span class="cm">-- average amount</span>
-<span class="sql-kw">SELECT MIN</span>(created_at)   <span class="sql-kw">FROM</span> tasks;              <span class="cm">-- oldest task</span>
-<span class="sql-kw">SELECT MAX</span>(amount)       <span class="sql-kw">FROM</span> expenses;           <span class="cm">-- biggest expense</span></pre>
-<div class="callout tip"><div class="callout-title">💡 COUNT(*) vs COUNT(column)</div>
-<div class="callout-body"><p><code>COUNT(*)</code> counts all rows including NULLs. <code>COUNT(column)</code> counts only rows where that column is not NULL. Use <code>COUNT(*)</code> to count rows; use <code>COUNT(column)</code> to count non-null values in a specific column.</p></div></div>
-<h2>9.2 GROUP BY</h2>
-<p>Aggregate per category instead of across all rows:</p>
-<pre><span class="sql-kw">SELECT</span> status, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> count
+    <div class="chapter-eyebrow">Part I &mdash; SQL Fundamentals &middot; Chapter 9</div>
+<h1 class="chapter-title">Aggregates &amp; Grouping</h1>
+<p class="chapter-lead">Count, sum, average, group and bucket your data, and learn the CASE expression that powers real dashboards. This rounds out Part I.</p>
+<div class="objectives"><div class="objectives-title">What you will learn</div><ul><li>Aggregate functions: COUNT, SUM, AVG, MIN, MAX &mdash; and how they treat NULL</li><li>GROUP BY &mdash; what really happens to the rows, step by step</li><li>The order SQL runs a query in, and why that decides WHERE vs HAVING</li><li>Aggregates with JOINs, including the LEFT JOIN counting trap</li><li>CASE WHEN &mdash; SQL's if/else, and how dashboards use it</li></ul></div>
+<h2>9.0 The data we will use</h2><p>Every example in this chapter runs on these two small tables, so you can check each result by hand. Keep them in view.</p><div class="pair"><div class="tbl"><div class="tbl-cap">expenses</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>item</th><th>category</th><th class=r>amount</th></tr></thead><tbody><tr><td>1</td><td>Lunch</td><td>Food</td><td class=r>25.50</td></tr><tr><td>2</td><td>Bus fare</td><td>Transport</td><td class=r>8.00</td></tr><tr><td>3</td><td>Groceries</td><td>Food</td><td class=r>112.30</td></tr><tr><td>4</td><td>Taxi</td><td>Transport</td><td class=r>35.00</td></tr><tr><td>5</td><td>Airtime</td><td>Utilities</td><td class=r>20.00</td></tr><tr><td>6</td><td>Dinner</td><td>Food</td><td class=r>48.20</td></tr></tbody></table></div></div><div class="tbl"><div class="tbl-cap">tasks</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>title</th><th>status</th><th>priority</th></tr></thead><tbody><tr><td>1</td><td>Write report</td><td>complete</td><td>high</td></tr><tr><td>2</td><td>Fix bug #12</td><td>pending</td><td>high</td></tr><tr><td>3</td><td>Email Kwame</td><td>complete</td><td>low</td></tr><tr><td>4</td><td>Plan sprint</td><td>pending</td><td>medium</td></tr><tr><td>5</td><td>Update docs</td><td>in_progress</td><td>medium</td></tr><tr><td>6</td><td>Refactor login</td><td>pending</td><td>high</td></tr><tr><td>7</td><td>Buy domain</td><td>complete</td><td>medium</td></tr><tr><td>8</td><td>Review PR</td><td>pending</td><td>low</td></tr></tbody></table></div></div></div>
+<h2>9.1 Aggregate functions</h2><p>A normal query returns one output row per input row. An <strong>aggregate function</strong> reads many rows and returns <strong>one</strong> value.</p><div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Function</th><th>Returns</th></tr></thead><tbody><tr><td>COUNT(*)</td><td>how many rows</td></tr><tr><td>COUNT(col)</td><td>how many rows where col is not NULL</td></tr><tr><td>SUM(col)</td><td>total of the values</td></tr><tr><td>AVG(col)</td><td>average of the values</td></tr><tr><td>MIN(col)</td><td>smallest value</td></tr><tr><td>MAX(col)</td><td>largest value</td></tr></tbody></table></div></div><p>You can use several in one query. <code>AS</code> gives each result column a readable name:</p><pre><span class="sql-kw">SELECT</span> <span class="sql-kw">COUNT</span>(*)            <span class="sql-kw">AS</span> n,
+       <span class="sql-kw">SUM</span>(amount)         <span class="sql-kw">AS</span> total,
+       <span class="sql-kw">ROUND</span>(<span class="sql-kw">AVG</span>(amount), <span class="sql-num">2</span>) <span class="sql-kw">AS</span> average,
+       <span class="sql-kw">MIN</span>(amount)         <span class="sql-kw">AS</span> smallest,
+       <span class="sql-kw">MAX</span>(amount)         <span class="sql-kw">AS</span> largest
+<span class="sql-kw">FROM</span> expenses;</pre>
+<div class="single"><div class="tbl"><div class="tbl-cap">Result (all 6 rows collapsed into 1)</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th class=r>n</th><th class=r>total</th><th class=r>average</th><th class=r>smallest</th><th class=r>largest</th></tr></thead><tbody><tr><td class=r>6</td><td class=r>249.0</td><td class=r>41.5</td><td class=r>8.0</td><td class=r>112.3</td></tr></tbody></table></div></div></div>
+<p>Aggregates see only the rows that <strong>survive WHERE</strong>. WHERE runs first, then the aggregate:</p><pre><span class="sql-kw">SELECT</span> <span class="sql-kw">SUM</span>(amount) <span class="sql-kw">FROM</span> expenses <span class="sql-kw">WHERE</span> category = <span class="sql-str">'Food'</span>;   <span class="sql-cm">-- 186.0  (25.50 + 112.30 + 48.20)</span>
+<span class="sql-kw">SELECT</span> <span class="sql-kw">COUNT</span>(<span class="sql-kw">DISTINCT</span> category) <span class="sql-kw">FROM</span> expenses;               <span class="sql-cm">-- 3  (unique categories)</span></pre>
+<h3>NULL: the quiet trap</h3><p>Aggregates <strong>skip NULLs</strong>, except <code>COUNT(*)</code>, which counts rows regardless. Imagine a table where one score was never entered:</p><div class="pair"><div class="tbl"><div class="tbl-cap">scores</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>name</th><th>score</th></tr></thead><tbody><tr><td>Ama</td><td>80</td></tr><tr><td>Kofi</td><td>NULL</td></tr><tr><td>Esi</td><td>70</td></tr></tbody></table></div></div><div class="arrow">&rarr;</div><div class="tbl"><div class="tbl-cap">results</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>COUNT(*)</th><th>COUNT(score)</th><th>AVG(score)</th></tr></thead><tbody><tr><td>3</td><td>2</td><td>75.0</td></tr></tbody></table></div></div></div>
+<div class="callout warning"><div class="callout-title">AVG is 75, not 50</div><div class="callout-body"><p>Kofi's NULL is ignored, so AVG divides 150 by <strong>2</strong>, not 3. If a missing value should count as zero, say so: <code>AVG(COALESCE(score, 0))</code> gives 50. Know which one you mean.</p></div></div>
+<h2>9.2 GROUP BY &mdash; one result per category</h2><p>Without GROUP BY, an aggregate squashes <em>everything</em> into one row. <strong>GROUP BY</strong> first sorts the rows into buckets by a column's value, then runs the aggregate <em>inside each bucket</em>.</p><pre><span class="sql-kw">SELECT</span> category,
+       <span class="sql-kw">COUNT</span>(*)    <span class="sql-kw">AS</span> n,
+       <span class="sql-kw">SUM</span>(amount) <span class="sql-kw">AS</span> total
+<span class="sql-kw">FROM</span> expenses
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> category
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> total <span class="sql-kw">DESC</span>;</pre>
+<div class="legend"><span class="dot g1"></span>Food <span class="dot g2"></span>Transport <span class="dot g3"></span>Utilities &mdash; same colour = same bucket</div><div class="pair"><div class="tbl"><div class="tbl-cap">expenses (rows sorted into buckets)</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>item</th><th>category</th><th class=r>amount</th></tr></thead><tbody><tr class=g1><td>Lunch</td><td>Food</td><td class=r>25.50</td></tr><tr class=g1><td>Groceries</td><td>Food</td><td class=r>112.30</td></tr><tr class=g1><td>Dinner</td><td>Food</td><td class=r>48.20</td></tr><tr class=g2><td>Bus fare</td><td>Transport</td><td class=r>8.00</td></tr><tr class=g2><td>Taxi</td><td>Transport</td><td class=r>35.00</td></tr><tr class=g3><td>Airtime</td><td>Utilities</td><td class=r>20.00</td></tr></tbody></table></div></div><div class="arrow">&rarr;</div><div class="tbl"><div class="tbl-cap">result (one row per bucket)</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>category</th><th class=r>n</th><th class=r>total</th></tr></thead><tbody><tr class=g1><td>Food</td><td class=r>3</td><td class=r>186.0</td></tr><tr class=g2><td>Transport</td><td class=r>2</td><td class=r>43.0</td></tr><tr class=g3><td>Utilities</td><td class=r>1</td><td class=r>20.0</td></tr></tbody></table></div></div></div>
+<div class="callout concept"><div class="callout-title">The GROUP BY rule</div><div class="callout-body"><p>Every column in your SELECT must be either <strong>listed in GROUP BY</strong> or <strong>wrapped in an aggregate</strong>. Why? Each bucket collapses to one row, so a column like <code>item</code> has no single answer (is it Lunch, Groceries or Dinner?).</p><p>SQLite will not stop you from breaking this rule: it silently picks an arbitrary row. PostgreSQL raises an error instead. Treat the rule as strict in both.</p></div></div>
+<h3>Grouping by two columns</h3><p>List more than one column and each <em>combination</em> becomes a bucket:</p><pre><span class="sql-kw">SELECT</span> priority, status, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> n
 <span class="sql-kw">FROM</span> tasks
-<span class="sql-kw">GROUP BY</span> status;</pre>
-<div class="diagram">Result:
-┌─────────────┬───────┐
-│ status      │ count │
-├─────────────┼───────┤
-│ pending     │   12  │
-│ in_progress │    3  │
-│ complete    │   27  │
-└─────────────┴───────┘</div>
-<pre><span class="sql-kw">SELECT</span> priority, status, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> count
-<span class="sql-kw">FROM</span> tasks
-<span class="sql-kw">GROUP BY</span> priority, status
-<span class="sql-kw">ORDER BY</span> priority, status;</pre>
-<h2>9.3 HAVING — Filter After Grouping</h2>
-<p>WHERE filters rows before grouping. HAVING filters groups after aggregation:</p>
-<pre><span class="cm">-- Tags used on more than 3 notes</span>
-<span class="sql-kw">SELECT</span> t.name, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> note_count
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> priority, status
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> priority, status;</pre>
+<div class="single"><div class="tbl"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>priority</th><th>status</th><th class=r>n</th></tr></thead><tbody><tr><td>high</td><td>complete</td><td class=r>1</td></tr><tr><td>high</td><td>pending</td><td class=r>2</td></tr><tr><td>low</td><td>complete</td><td class=r>1</td></tr><tr><td>low</td><td>pending</td><td class=r>1</td></tr><tr><td>medium</td><td>complete</td><td class=r>1</td></tr><tr><td>medium</td><td>in_progress</td><td class=r>1</td></tr><tr><td>medium</td><td>pending</td><td class=r>1</td></tr></tbody></table></div></div></div>
+<p>Notice <code>low</code> sorts before <code>medium</code>: ORDER BY is alphabetical, not logical. Section 9.5 fixes that with CASE.</p><h2>9.3 WHERE vs HAVING &mdash; it is all about order</h2><p>SQL does not run your query top to bottom as you wrote it. It runs the clauses in this fixed order:</p><div class="flow"><div class="flow-step"><b>1 &middot; FROM / JOIN</b>Pick the tables and combine them.</div><div class="flow-step"><b>2 &middot; WHERE</b>Throw away individual rows.</div><div class="flow-step"><b>3 &middot; GROUP BY</b>Sort what is left into buckets.</div><div class="flow-step"><b>4 &middot; HAVING</b>Throw away whole buckets.</div><div class="flow-step"><b>5 &middot; SELECT</b>Compute the columns and aggregates.</div><div class="flow-step"><b>6 &middot; ORDER BY</b>Sort the result.</div><div class="flow-step"><b>7 &middot; LIMIT</b>Cut it to N rows.</div></div>
+<p>That order explains the rule: <strong>WHERE</strong> runs <em>before</em> any bucket exists, so it cannot see a SUM or COUNT. <strong>HAVING</strong> runs <em>after</em> the buckets are built, so it can.</p><pre><span class="sql-kw">SELECT</span> category, <span class="sql-kw">SUM</span>(amount) <span class="sql-kw">AS</span> total
+<span class="sql-kw">FROM</span> expenses
+<span class="sql-kw">WHERE</span> amount &gt; <span class="sql-num">10</span>                <span class="sql-cm">-- step 2: drop small expenses (rows)</span>
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> category                <span class="sql-cm">-- step 3: bucket by category</span>
+<span class="sql-kw">HAVING</span> <span class="sql-kw">SUM</span>(amount) &gt; <span class="sql-num">40</span>          <span class="sql-cm">-- step 4: drop weak categories (buckets)</span>
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> total <span class="sql-kw">DESC</span>;</pre>
+<p>Follow it through by hand:</p><div class="pair"><div class="tbl"><div class="tbl-cap">after WHERE amount > 10</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>item</th><th>category</th><th class=r>amount</th></tr></thead><tbody><tr class=g1><td>Lunch</td><td>Food</td><td class=r>25.50</td></tr><tr class=g1><td>Groceries</td><td>Food</td><td class=r>112.30</td></tr><tr class=g1><td>Dinner</td><td>Food</td><td class=r>48.20</td></tr><tr class=g2><td>Taxi</td><td>Transport</td><td class=r>35.00</td></tr><tr class=g3><td>Airtime</td><td>Utilities</td><td class=r>20.00</td></tr></tbody></table></div></div><div class="arrow">&rarr;</div><div class="tbl"><div class="tbl-cap">after GROUP BY</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>category</th><th class=r>SUM</th></tr></thead><tbody><tr class=g1><td>Food</td><td class=r>186.0</td></tr><tr class=g2><td>Transport</td><td class=r>35.0</td></tr><tr class=g3><td>Utilities</td><td class=r>20.0</td></tr></tbody></table></div></div><div class="arrow">&rarr;</div><div class="tbl"><div class="tbl-cap">after HAVING > 40</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>category</th><th class=r>total</th></tr></thead><tbody><tr class=g1><td>Food</td><td class=r>186.0</td></tr></tbody></table></div></div></div>
+<p>Bus fare (8.00) was removed by WHERE, so Transport's total fell from 43.0 to 35.0 and then failed HAVING. Move that same condition into the wrong clause and you get a different answer, which is why the distinction matters.</p><div class="callout tip"><div class="callout-title">Rule of thumb</div><div class="callout-body"><p>Condition about a <strong>single row</strong> (<code>amount &gt; 10</code>, <code>status = 'pending'</code>)? &rarr; <strong>WHERE</strong>. Condition about a <strong>group's total</strong> (<code>COUNT(*) &gt; 3</code>, <code>SUM(...) &gt; 40</code>)? &rarr; <strong>HAVING</strong>. Prefer WHERE whenever possible: it shrinks the data before the expensive grouping.</p><p>SQLite lets you write <code>HAVING total &gt; 40</code> using the alias. PostgreSQL does not, so repeat the aggregate (<code>HAVING SUM(amount) &gt; 40</code>) and your code works in both.</p></div></div>
+<h2>9.4 Aggregates with JOINs</h2><p>Remember the notes app: a note can have many tags, and a tag can be on many notes. A <em>junction table</em> <code>note_tags</code> links them. &ldquo;How many notes does each tag have?&rdquo; needs a JOIN <em>and</em> a GROUP BY.</p><div class="legend"><span class="dot g1"></span>python (id 1) <span class="dot g2"></span>sql (id 2) <span class="dot g3"></span>ideas (id 3) &mdash; a row in <code>note_tags</code> matches the tag with the same colour</div><div class="pair"><div class="tbl"><div class="tbl-cap">tags</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>name</th></tr></thead><tbody><tr class=g1><td>1</td><td>python</td></tr><tr class=g2><td>2</td><td>sql</td></tr><tr class=g3><td>3</td><td>ideas</td></tr></tbody></table></div></div><div class="tbl"><div class="tbl-cap">note_tags</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>note_id</th><th>tag_id</th></tr></thead><tbody><tr class=g1><td>1</td><td>1</td></tr><tr class=g2><td>2</td><td>2</td></tr><tr class=g1><td>3</td><td>1</td></tr><tr class=g2><td>3</td><td>2</td></tr></tbody></table></div></div></div>
+<p>Step 1: the JOIN pairs each tag with its <code>note_tags</code> rows. Step 2: GROUP BY counts the rows per tag.</p><pre><span class="sql-kw">SELECT</span> t.name, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> note_count
 <span class="sql-kw">FROM</span> tags t
-<span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> t.id = nt.tag_id
-<span class="sql-kw">GROUP BY</span> t.name
-<span class="sql-kw">HAVING COUNT</span>(*) &gt; <span class="sql-num">3</span>
-<span class="sql-kw">ORDER BY</span> note_count <span class="sql-kw">DESC</span>;</pre>
-<div class="callout concept"><div class="callout-title">🔵 WHERE vs HAVING</div>
-<div class="callout-body">
-<p><strong>WHERE</strong> filters individual rows <em>before</em> they're grouped.</p>
-<p><strong>HAVING</strong> filters groups <em>after</em> aggregation.</p>
-<p>Rule: if the condition involves an aggregate function (COUNT, SUM, AVG...) → use HAVING. Otherwise → use WHERE.</p>
-</div></div>
-<h2>9.4 A Real Dashboard Query</h2>
-<pre><span class="cm">-- Task summary: count and avg per priority, pending only</span>
-<span class="sql-kw">SELECT</span>
+<span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> nt.tag_id = t.id
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> t.id, t.name
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> note_count <span class="sql-kw">DESC</span>;</pre>
+<div class="pair"><div class="tbl"><div class="tbl-cap">after JOIN (4 rows)</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>t.name</th><th>nt.note_id</th></tr></thead><tbody><tr class=g1><td>python</td><td>1</td></tr><tr class=g2><td>sql</td><td>2</td></tr><tr class=g1><td>python</td><td>3</td></tr><tr class=g2><td>sql</td><td>3</td></tr></tbody></table></div></div><div class="arrow">&rarr;</div><div class="tbl"><div class="tbl-cap">after GROUP BY</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>name</th><th class=r>note_count</th></tr></thead><tbody><tr class=g1><td>python</td><td class=r>2</td></tr><tr class=g2><td>sql</td><td class=r>2</td></tr></tbody></table></div></div></div>
+<p><code>ideas</code> vanished: an ordinary JOIN keeps only tags that have a match. If you want <em>every</em> tag, including unused ones, switch to <strong>LEFT JOIN</strong> &mdash; and change what you count:</p><pre><span class="sql-kw">SELECT</span> t.name, <span class="sql-kw">COUNT</span>(nt.note_id) <span class="sql-kw">AS</span> note_count   <span class="sql-cm">-- count the column, not *</span>
+<span class="sql-kw">FROM</span> tags t
+<span class="sql-kw">LEFT</span> <span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> nt.tag_id = t.id
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> t.id, t.name
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> note_count <span class="sql-kw">DESC</span>, t.name;</pre>
+<div class="single"><div class="tbl"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>name</th><th class=r>note_count</th></tr></thead><tbody><tr class=g1><td>python</td><td class=r>2</td></tr><tr class=g2><td>sql</td><td class=r>2</td></tr><tr class=g3><td>ideas</td><td class=r>0</td></tr></tbody></table></div></div></div>
+<div class="callout mistake"><div class="callout-title">The LEFT JOIN counting trap</div><div class="callout-body"><p>For <code>ideas</code>, the LEFT JOIN produces one row with <code>nt.note_id = NULL</code>. <code>COUNT(*)</code> counts that row and reports <strong>1</strong> (wrong). <code>COUNT(nt.note_id)</code> skips the NULL and correctly reports <strong>0</strong>. After a LEFT JOIN, count a column from the <em>right-hand</em> table.</p></div></div>
+<h2>9.5 CASE WHEN &mdash; if/else inside SQL</h2><p><strong>CASE</strong> looks at a row and returns one value depending on conditions, like Python's <code>if / elif / else</code> but as an expression you can put almost anywhere in a query.</p><pre><span class="sql-kw">CASE</span>
+    <span class="sql-kw">WHEN</span> condition1 <span class="sql-kw">THEN</span> result1
+    <span class="sql-kw">WHEN</span> condition2 <span class="sql-kw">THEN</span> result2
+    <span class="sql-kw">ELSE</span> fallback            <span class="sql-cm">-- optional; without it you get NULL</span>
+<span class="sql-kw">END</span></pre>
+<p>Rules: conditions are checked <strong>top to bottom and the first match wins</strong>; <code>END</code> is required; give the whole thing an <code>AS</code> name when it is in SELECT.</p><h3>Use 1 &mdash; label rows</h3><pre><span class="sql-kw">SELECT</span> item, amount,
+       <span class="sql-kw">CASE</span>
+           <span class="sql-kw">WHEN</span> amount &gt;= <span class="sql-num">40</span> <span class="sql-kw">THEN</span> <span class="sql-str">'big'</span>
+           <span class="sql-kw">WHEN</span> amount &gt;= <span class="sql-num">20</span> <span class="sql-kw">THEN</span> <span class="sql-str">'medium'</span>
+           <span class="sql-kw">ELSE</span> <span class="sql-str">'small'</span>
+       <span class="sql-kw">END</span> <span class="sql-kw">AS</span> size
+<span class="sql-kw">FROM</span> expenses;</pre>
+<div class="single"><div class="tbl"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>item</th><th class=r>amount</th><th>size</th></tr></thead><tbody><tr><td>Lunch</td><td class=r>25.5</td><td>medium</td></tr><tr><td>Bus fare</td><td class=r>8.0</td><td>small</td></tr><tr><td>Groceries</td><td class=r>112.3</td><td>big</td></tr><tr><td>Taxi</td><td class=r>35.0</td><td>medium</td></tr><tr><td>Airtime</td><td class=r>20.0</td><td>medium</td></tr><tr><td>Dinner</td><td class=r>48.2</td><td>big</td></tr></tbody></table></div></div></div>
+<p>Groceries (112.3) matches the first WHEN and stops, so it never reaches the second test. Order your WHENs from most specific to least.</p><h3>Use 2 &mdash; custom sort order</h3><p>Plain <code>ORDER BY priority</code> sorts alphabetically (high, low, medium). CASE turns each word into a number so you control the order:</p><pre><span class="sql-kw">SELECT</span> title, priority <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> <span class="sql-kw">CASE</span> priority
+             <span class="sql-kw">WHEN</span> <span class="sql-str">'high'</span>   <span class="sql-kw">THEN</span> <span class="sql-num">1</span>
+             <span class="sql-kw">WHEN</span> <span class="sql-str">'medium'</span> <span class="sql-kw">THEN</span> <span class="sql-num">2</span>
+             <span class="sql-kw">WHEN</span> <span class="sql-str">'low'</span>    <span class="sql-kw">THEN</span> <span class="sql-num">3</span>
+         <span class="sql-kw">END</span>;</pre>
+<p>This is the &ldquo;simple form&rdquo;: <code>CASE column WHEN value THEN ...</code> compares one column to several exact values. The first form (<code>CASE WHEN condition</code>) handles ranges and any condition.</p><h3>Use 3 &mdash; conditional counting (the dashboard trick)</h3><p>This is the one that confused you, so let us take it slowly. Goal: for each priority, how many tasks are <em>complete</em>? Inside an aggregate, CASE turns each row into a <strong>1</strong> (counts) or a <strong>0</strong> (does not), and SUM adds them up:</p><pre><span class="sql-kw">SUM</span>(<span class="sql-kw">CASE</span> <span class="sql-kw">WHEN</span> status = <span class="sql-str">'complete'</span> <span class="sql-kw">THEN</span> <span class="sql-num">1</span> <span class="sql-kw">ELSE</span> <span class="sql-num">0</span> <span class="sql-kw">END</span>)</pre>
+<p>Take the three <code>high</code> tasks. First CASE runs on every row; then SUM adds each bucket:</p><div class="pair"><div class="tbl"><div class="tbl-cap">CASE result per row (priority = high)</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>title</th><th>status</th><th class=r>CASE gives</th></tr></thead><tbody><tr class=g1><td>Write report</td><td>complete</td><td class=r>1</td></tr><tr><td>Fix bug #12</td><td>pending</td><td class=r>0</td></tr><tr><td>Refactor login</td><td>pending</td><td class=r>0</td></tr></tbody></table></div></div><div class="arrow">&rarr;</div><div class="tbl"><div class="tbl-cap">SUM of the column</div><div class="tbl-scroll"><table class="data-table"><thead><tr><th>priority</th><th class=r>done</th></tr></thead><tbody><tr><td>high</td><td class=r>1</td></tr></tbody></table></div></div></div>
+<div class="callout tip"><div class="callout-title">Same idea, different spelling</div><div class="callout-body"><p><code>COUNT(CASE WHEN status = 'complete' THEN 1 END)</code> does the same job. With no ELSE, non-matching rows become NULL and COUNT skips NULLs. Use whichever reads better to you.</p></div></div>
+<h2>9.6 A real dashboard query, piece by piece</h2><p>Now the query has no mystery left. Task count, completed count and completion percentage per priority, most urgent first:</p><pre><span class="sql-kw">SELECT</span>
     priority,
-    <span class="sql-kw">COUNT</span>(*)                    <span class="sql-kw">AS</span> total,
-    <span class="sql-kw">SUM</span>(<span class="sql-kw">CASE WHEN</span> status = <span class="sql-str">'complete'</span>
-         <span class="sql-kw">THEN</span> <span class="sql-num">1</span> <span class="sql-kw">ELSE</span> <span class="sql-num">0</span> <span class="sql-kw">END</span>)   <span class="sql-kw">AS</span> done
+    <span class="sql-kw">COUNT</span>(*)                                          <span class="sql-kw">AS</span> total,
+    <span class="sql-kw">SUM</span>(<span class="sql-kw">CASE</span> <span class="sql-kw">WHEN</span> status = <span class="sql-str">'complete'</span> <span class="sql-kw">THEN</span> <span class="sql-num">1</span> <span class="sql-kw">ELSE</span> <span class="sql-num">0</span> <span class="sql-kw">END</span>) <span class="sql-kw">AS</span> done,
+    <span class="sql-kw">ROUND</span>(<span class="sql-num">100.0</span> * <span class="sql-kw">SUM</span>(<span class="sql-kw">CASE</span> <span class="sql-kw">WHEN</span> status = <span class="sql-str">'complete'</span>
+                           <span class="sql-kw">THEN</span> <span class="sql-num">1</span> <span class="sql-kw">ELSE</span> <span class="sql-num">0</span> <span class="sql-kw">END</span>) / <span class="sql-kw">COUNT</span>(*), <span class="sql-num">1</span>) <span class="sql-kw">AS</span> pct_done
 <span class="sql-kw">FROM</span> tasks
-<span class="sql-kw">GROUP BY</span> priority
-<span class="sql-kw">ORDER BY</span>
-    <span class="sql-kw">CASE</span> priority
-        <span class="sql-kw">WHEN</span> <span class="sql-str">'high'</span>   <span class="sql-kw">THEN</span> <span class="sql-num">1</span>
-        <span class="sql-kw">WHEN</span> <span class="sql-str">'medium'</span> <span class="sql-kw">THEN</span> <span class="sql-num">2</span>
-        <span class="sql-kw">WHEN</span> <span class="sql-str">'low'</span>    <span class="sql-kw">THEN</span> <span class="sql-num">3</span>
-    <span class="sql-kw">END</span>;</pre>
-<div class="exercise-block"><div class="exercise-title">📝 Exercises</div>
-<div class="question" data-correct="C">
-<div class="question-text">Q1 — What is the difference between WHERE and HAVING?</div>
-<ul class="options">
-<li class="option" data-value="A"><span class="option-key">A</span> They are identical — WHERE and HAVING can always be swapped</li>
-<li class="option" data-value="B"><span class="option-key">B</span> WHERE is for text columns; HAVING is for number columns</li>
-<li class="option" data-value="C"><span class="option-key">C</span> WHERE filters rows before grouping; HAVING filters groups after aggregation</li>
-</ul>
-<button class="reveal-btn" data-target="c9q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
-<div class="reveal-content" id="c9q1">WHERE happens before GROUP BY — it filters the raw rows. HAVING happens after GROUP BY — it filters the grouped results. You can't use aggregate functions in WHERE; you can in HAVING.</div>
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> priority
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> <span class="sql-kw">CASE</span> priority
+             <span class="sql-kw">WHEN</span> <span class="sql-str">'high'</span>   <span class="sql-kw">THEN</span> <span class="sql-num">1</span>
+             <span class="sql-kw">WHEN</span> <span class="sql-str">'medium'</span> <span class="sql-kw">THEN</span> <span class="sql-num">2</span>
+             <span class="sql-kw">WHEN</span> <span class="sql-str">'low'</span>    <span class="sql-kw">THEN</span> <span class="sql-num">3</span>
+         <span class="sql-kw">END</span>;</pre>
+<div class="single"><div class="tbl"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>priority</th><th class=r>total</th><th class=r>done</th><th class=r>pct_done</th></tr></thead><tbody><tr><td>high</td><td class=r>3</td><td class=r>1</td><td class=r>33.3</td></tr><tr><td>medium</td><td class=r>3</td><td class=r>1</td><td class=r>33.3</td></tr><tr><td>low</td><td class=r>2</td><td class=r>1</td><td class=r>50.0</td></tr></tbody></table></div></div></div>
+<div class="single"><div class="tbl-scroll"><table class="data-table"><thead><tr><th>Piece</th><th>What it does</th></tr></thead><tbody><tr><td>GROUP BY priority</td><td>one bucket each for high, medium, low</td></tr><tr><td>COUNT(*)</td><td>rows in the bucket = total tasks</td></tr><tr><td>SUM(CASE ... END)</td><td>conditional count = completed tasks (9.5, use 3)</td></tr><tr><td>100.0 * ... / COUNT(*)</td><td>percentage. The 100.0 matters: in SQLite 1 / 3 is 0 (integer division), but 100.0 * 1 / 3 is 33.33...</td></tr><tr><td>ROUND(..., 1)</td><td>keep one decimal place</td></tr><tr><td>ORDER BY CASE ...</td><td>logical order instead of alphabetical (9.5, use 2)</td></tr></tbody></table></div></div><div class="callout mistake"><div class="callout-title">Five mistakes to recognise</div><div class="callout-body"><p>1) Using an aggregate in WHERE (use HAVING). 2) Selecting a column that is neither grouped nor aggregated. 3) Using <code>COUNT(*)</code> after a LEFT JOIN and counting the empty match. 4) Forgetting that aggregates skip NULL. 5) Integer division: <code>done / total</code> gives 0; multiply by <code>100.0</code> first.</p></div></div>
+<div class="exercise-block"><div class="exercise-title">Exercises</div>
+<div class="question" data-correct="C"><div class="question-text">Q1 &mdash; What is the difference between WHERE and HAVING?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> They are identical</li><li class="option" data-value="B"><span class="option-key">B</span> WHERE is for text; HAVING is for numbers</li><li class="option" data-value="C"><span class="option-key">C</span> WHERE filters rows before grouping; HAVING filters groups after aggregation</li></ul><button class="reveal-btn" data-target="c9q1" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c9q1">WHERE runs before GROUP BY, so it filters raw rows and cannot see aggregates. HAVING runs after, so it filters buckets and can use COUNT, SUM and the rest.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q2 &mdash; A table has scores 80, NULL, 70. What does <code>AVG(score)</code> return?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> 50.0</li><li class="option" data-value="B"><span class="option-key">B</span> 75.0</li><li class="option" data-value="C"><span class="option-key">C</span> NULL</li></ul><button class="reveal-btn" data-target="c9q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c9q2">AVG skips NULL, so it computes 150 / 2 = 75. Use <code>AVG(COALESCE(score, 0))</code> to treat NULL as 0 (result: 50).</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q3 &mdash; After a LEFT JOIN, which expression correctly counts a tag with no notes as 0?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> COUNT(*)</li><li class="option" data-value="B"><span class="option-key">B</span> COUNT(nt.note_id)</li><li class="option" data-value="C"><span class="option-key">C</span> COUNT(t.id)</li></ul><button class="reveal-btn" data-target="c9q3" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c9q3">The unmatched tag gets one row where nt.note_id is NULL. COUNT(*) counts that row (1). COUNT(nt.note_id) skips the NULL (0). COUNT(t.id) also counts it, because t.id is never NULL.</div></div>
+<div class="question" data-correct="B"><div class="question-text">Q4 &mdash; What does <code>SUM(CASE WHEN status = 'complete' THEN 1 ELSE 0 END)</code> compute?</div><ul class="options"><li class="option" data-value="A"><span class="option-key">A</span> The sum of the status column</li><li class="option" data-value="B"><span class="option-key">B</span> The number of rows where status is 'complete'</li><li class="option" data-value="C"><span class="option-key">C</span> The number of distinct statuses</li></ul><button class="reveal-btn" data-target="c9q4" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button><div class="reveal-content" id="c9q4">CASE converts every row to 1 (complete) or 0 (anything else). SUM adds those, which equals the number of complete rows.</div></div>
 </div>
-<div class="question" data-correct="A">
-<div class="question-text">Q2 — You want categories with more than 5 items. Which clause filters this?</div>
-<ul class="options">
-<li class="option" data-value="A"><span class="option-key">A</span> HAVING COUNT(*) > 5</li>
-<li class="option" data-value="B"><span class="option-key">B</span> WHERE COUNT(*) > 5</li>
-<li class="option" data-value="C"><span class="option-key">C</span> FILTER COUNT(*) > 5</li>
-</ul>
-<button class="reveal-btn" data-target="c9q2" data-show-label="Show explanation" data-hide-label="Hide">Show explanation</button>
-<div class="reveal-content" id="c9q2">COUNT(*) is an aggregate function, so it must be in HAVING, not WHERE. WHERE can't reference aggregate results because aggregation hasn't happened yet at the WHERE stage.</div>
-</div></div>
-<div class="callout checkpoint"><div class="callout-title">🧠 Part I Checkpoint</div><div class="callout-body">
-<p>You've finished Part I. Without looking back, write queries for these:</p>
-<ol style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font-family:var(--font-sans);font-size:14px;color:var(--text-muted);">
-<li style="padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:var(--accent);font-family:var(--font-mono);">1.</span> Count tasks grouped by status</li>
-<li style="padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:var(--accent);font-family:var(--font-mono);">2.</span> Find all notes tagged with "python" (use joins)</li>
-<li style="padding-left:20px;position:relative;"><span style="position:absolute;left:0;color:var(--accent);font-family:var(--font-mono);">3.</span> Get the 5 most recent high-priority pending tasks</li>
-</ol>
-<textarea class="checkpoint-input" style="min-height:140px;" placeholder="-- 1. Task counts&#10;&#10;-- 2. Notes tagged python&#10;&#10;-- 3. Top 5 urgent tasks"></textarea>
-</div></div>
-<div class="callout concept"><div class="callout-title">🎉 Part I complete</div><div class="callout-body">
-<p>You now know SQL. SELECT, WHERE, ORDER BY, LIMIT, CREATE TABLE, INSERT, UPDATE, DELETE, JOIN, GROUP BY, HAVING — that's the core of the language. In Part II you'll connect Python to a real SQLite database and use all of this from code.</p>
-</div></div>
+<div class="callout checkpoint"><div class="callout-title">Part I Checkpoint</div><div class="callout-body"><p>Without looking back, write these queries (tables from this chapter; assume <code>tasks</code> also has a <code>created_at</code> column and <code>notes</code> has <code>id, title</code>):</p><p>1. Count tasks grouped by status.<br>2. Find all notes tagged &ldquo;python&rdquo; (use joins).<br>3. Get the 5 most recent high-priority pending tasks.<br>4. Per category, total spent, but only categories above 40 total.</p><textarea class="checkpoint-input" style="min-height:140px;" placeholder="-- 1.
+
+-- 2.
+
+-- 3.
+
+-- 4."></textarea><button class="reveal-btn" data-target="c9cp" data-show-label="Show solution" data-hide-label="Hide">Show solution</button><div class="reveal-content" id="c9cp"><pre><span class="sql-cm">-- 1</span>
+<span class="sql-kw">SELECT</span> status, <span class="sql-kw">COUNT</span>(*) <span class="sql-kw">AS</span> n <span class="sql-kw">FROM</span> tasks <span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> status;
+
+<span class="sql-cm">-- 2</span>
+<span class="sql-kw">SELECT</span> n.title
+<span class="sql-kw">FROM</span> notes n
+<span class="sql-kw">JOIN</span> note_tags nt <span class="sql-kw">ON</span> nt.note_id = n.id
+<span class="sql-kw">JOIN</span> tags t       <span class="sql-kw">ON</span> t.id = nt.tag_id
+<span class="sql-kw">WHERE</span> t.name = <span class="sql-str">'python'</span>;
+
+<span class="sql-cm">-- 3</span>
+<span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> tasks
+<span class="sql-kw">WHERE</span> priority = <span class="sql-str">'high'</span> <span class="sql-kw">AND</span> status = <span class="sql-str">'pending'</span>
+<span class="sql-kw">ORDER</span> <span class="sql-kw">BY</span> created_at <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">5</span>;
+
+<span class="sql-cm">-- 4</span>
+<span class="sql-kw">SELECT</span> category, <span class="sql-kw">SUM</span>(amount) <span class="sql-kw">AS</span> total
+<span class="sql-kw">FROM</span> expenses
+<span class="sql-kw">GROUP</span> <span class="sql-kw">BY</span> category
+<span class="sql-kw">HAVING</span> <span class="sql-kw">SUM</span>(amount) &gt; <span class="sql-num">40</span>;</pre>
+</div></div></div>
+<div class="callout concept"><div class="callout-title">Part I complete</div><div class="callout-body"><p>You now know the core of SQL: SELECT, WHERE, ORDER BY, LIMIT, CREATE TABLE, INSERT, UPDATE, DELETE, JOIN, GROUP BY, HAVING and CASE. In Part II you will run all of it from Python with a real SQLite database.</p></div></div>
+
     <div class="chapter-nav"><a class="nav-btn" href="chapter-08.html"><span class="nav-btn-dir">← Previous</span><span class="nav-btn-title">Chapter 8: Joins</span></a><a class="nav-btn next" href="chapter-10.html"><span class="nav-btn-dir">Next →</span><span class="nav-btn-title">Chapter 10: Intro to sqlite3</span></a></div>
   </div></main>
 </div>
